@@ -10,7 +10,6 @@ from utils.gains import GainsEquator, Gains_T15_35, Gains_T15_34
 
 
 class Polychromator:
-
     def __init__(self, poly_name: int | str, fiber_number: int, z_cm: float, caen_time: list, caen_data: list,
                  config_connection=None, gains: GainsEquator | Gains_T15_34 | Gains_T15_35 = None,
                  absolut_calib: Path = None, spectral_calib: Path = None, f_expect_path: Path = None):

@@ -1,5 +1,5 @@
-import os
 import tkinter as tk
+from tkinter import ttk
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,32 +8,61 @@ from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.widgets import SpanSelector
 
-from utils import get_Xpoint, draw_separatrix
+from gui.utils import get_Xpoint, get_equator_data, get_divertor_data
+from gui.plots import draw_separatrix
 
 initial_path_to_mcc = r'C:\Users\NE\Desktop\DTR_data\mcc_data'
 initial_path_to_DTR_data = r'C:\Users\NE\Desktop\DTR_data\TS_data'
 initial_eq_data = 'None'
 
 
-class DTSPlots:
-    def __init__(self, root):
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
 
+        self.title("My App")
+        self.geometry("1200x1000")
+
+        tabs = ttk.Notebook(self)
+
+        tab1 = ControlTab(tabs)
+        tabs.add(tab1, text="Control")
+
+        tab2 = DTSPlotsTab(tabs)
+        tabs.add(tab2, text="PLOTS")
+
+        tab3 = RawSignalsTab(tabs)
+        tabs.add(tab3, text="Raw signals")
+
+        tabs.pack(expand=True, fill="both")
+
+
+
+class ControlTab(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        label = ttk.Label(self, text="Tab 2")
+        label.pack()
+
+        # Добавьте код для создания и настройки виджетов на второй вкладке
+
+
+class RawSignalsTab(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        label = ttk.Label(self, text="Tab 3")
+        label.pack()
+
+
+
+class DTSPlotsTab(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
         self.sht_data = {}
 
-        self.root = root
-        self.root.geometry("1200x1000")
-        self.root.title("DTS PLOTS")
-
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True)
-
-        self.tab1 = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab1, text="Tab 1")
-
-        self.tab2 = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab2, text="PLOTS")
-
-        self.input_frame = tk.Frame(self.tab2)
+        self.input_frame = tk.Frame(self)
         self.input_frame.pack(side="top", pady=5, anchor='nw')
 
         self.path_label = tk.Label(self.input_frame, text="PATH:")
@@ -62,10 +91,10 @@ class DTSPlots:
 
         self.fig, self.axs = plt.subplots(2, 3)
         self.fig.subplots_adjust(left=0.07, bottom=0.05, right=0.95, top=0.96, wspace=0.2, hspace=0.15)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.tab2)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.get_tk_widget().pack(side="top", fill="both", expand=True, padx=1, pady=1)
 
-        self.interactive = NavigationToolbar2Tk(self.canvas, window=self.input_frame)
+        self.interactive = NavigationToolbar2Tk(self.canvas, self)
         self.interactive.update()
         self.interactive.pack(side="left", padx=5)
 
@@ -86,11 +115,11 @@ class DTSPlots:
         Te_err = data['Te_err(t)']
 
         # trans
-        Te_Z = list(map(list, zip(*Te)))
-        ne_Z = list(map(list, zip(*ne)))
+        Te_Z = np.array(Te).T
+        ne_Z = np.array(ne).T
 
-        Te_err_Z = list(map(list, zip(*Te_err)))
-        ne_err_Z = list(map(list, zip(*ne_err)))
+        Te_err_Z = np.array(Te_err).T
+        ne_err_Z = np.array(ne_err).T
 
         times = data['t']
         coord = data['Z']
@@ -117,19 +146,6 @@ class DTSPlots:
         for T, n, time in zip(Te_Z, ne_Z, times):
             self.axs[1][2].plot(coord, [Te * ne for Te, ne in zip(T, n)], '-o', markersize=3, label=str(time))
 
-        for ax in self.axs[0]:
-            ax.set_xlabel('time(ms)')
-
-        for ax in self.axs[0]:
-            ax.set_xlabel('time(ms)')
-
-        for ax in self.axs[1]:
-            ax.set_xlim(100, 240)
-            ax.invert_xaxis()
-
-        for ax in self.axs.flat:
-            ax.grid()
-            ax.legend()
 
         self.axs[0][0].set_ylabel('Te(t)')
         self.axs[0][0].set_ylim(0, 1500)
@@ -149,75 +165,21 @@ class DTSPlots:
         self.axs[1][2].set_ylabel('ne * Te(Z)')
         self.axs[1][2].set_ylim(0, 1e21)
 
+        for ax in self.axs[0]:
+            ax.set_xlabel('time(ms)')
+
+        for ax in self.axs[1]:
+            ax.invert_xaxis()
+
+        for ax in self.axs.flat:
+            ax.grid()
+            ax.legend()
+
         self.canvas.draw()
-
-
-    def get_divertor_data(self, shot_number):
-        path = fr'{initial_path_to_DTR_data}\%d' % int(shot_number)
-        files = os.listdir(path)
-        coordinate = []
-
-        for file_name in files:
-            if 'ne' in file_name:
-                ne_all = []
-                ne_err_all = []
-                with open(path + fr'\{file_name}') as ne_file:
-                    ne_file_data = ne_file.readlines()
-
-                for ind, line in enumerate(ne_file_data):
-                    ne = []
-                    ne_err = []
-                    if ind == 0:
-                        times = [float(t) for t in line.split(',')[1::2]]
-                    if ind > 0:
-                        line_data_list = line.split(', ')
-                        coordinate.append(line_data_list[0])
-                        ne = [float(n) for n in line_data_list[1::2]]
-                        ne_err = [float(n_err) for n_err in line_data_list[2::2]]
-
-                        ne_all.append(ne)
-                        ne_err_all.append(ne_err)
-
-            elif 'Te' in file_name:
-                Te_all = []
-                Te_err_all = []
-                with open(path + fr'\{file_name}') as te_file:
-                    te_file_data = te_file.readlines()
-
-                for ind, line in enumerate(te_file_data):
-                    te = []
-                    te_err = []
-                    if ind > 0:
-                        line_data_list = line.split(', ')
-                        te = [float(t) for t in line_data_list[1::2]]
-                        te_err = [float(t_err) for t_err in line_data_list[2::2]]
-
-                        Te_all.append(te)
-                        Te_err_all.append(te_err)
-
-        return {'discharge': shot_number, 't': times, 'Z': coordinate,
-                'ne(t)': ne_all, 'ne_err(t)': ne_err_all,
-                'Te(t)': Te_all, 'Te_err(t)': Te_err_all}
-
-    def get_equator_data(self, path):
-        path = fr'{initial_eq_data}\%d' % int(path)
-        files = os.listdir(path)
-        coordinate = []
-
-        for file in files:
-            if 'n(R)' in file:
-                with open(path + fr'\{file}') as ne_file:
-                    ne_file_data = ne_file.readlines()
-
-                for ind, line in enumerate(ne_file_data):
-                    if ind > 1:
-                        line_data_list = line.split(', ')
-                        coordinate.append(float(line_data_list[0]) / 1000)
-                return {'R': coordinate}
 
     def button_update_clicked(self):
         shot_num = self.shot_num_entry.get()
-        self.sht_data = self.get_divertor_data(shot_num)
+        self.sht_data = get_divertor_data(shot_num)
         self.update_graphs(self.sht_data)
 
     def button_refresh_clicked(self):
@@ -234,7 +196,7 @@ class DTSPlots:
             time = float(self.mcc_entry.get())
             shot_num = int(self.shot_num_entry.get())
 
-            # equator_radia = self.get_equator_data(shot_num)['R']
+            # equator_radia = get_equator_data(shot_num)['R']
             equator_radia = [0.6, 0.59, 0.57, 0.55, 0.52, 0.41]
 
             path_to_mcc = f'{initial_path_to_mcc}/mcc_{shot_num}.json'
@@ -271,9 +233,6 @@ class DTSPlots:
 
             Te_Z = np.array(Te).T
             Te_err_Z = np.array(Te_err).T
-
-            # Te_Z = list(map(list, zip(*Te)))
-            # Te_err_Z = list(map(list, zip(*Te_err)))
 
             self.axs[1][0].clear()
 
@@ -367,6 +326,5 @@ class DTSPlots:
 
 
 if __name__ == '__main__':
-    root = tk.Tk()
-    app = DTSPlots(root)
-    root.mainloop()
+    app = App()
+    app.mainloop()

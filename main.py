@@ -10,7 +10,7 @@ from utils.path_parser import read_config
 from utils.write_files import write_results
 
 
-discharge_num = '44648'
+discharge_num = '44649'
 config_Path = Path('PATH.ini')
 config = read_config(config_Path)
 

@@ -18,7 +18,6 @@ def caen_msg_handler(path, t_step=0.325, time_shift=100, noise_len=400, processe
     times = []
     caen_zero_lvl = []
     caen_channels_number = 16
-    combiscope_times = []
     with path.open(mode='rb') as file:
         data = msgpack.unpackb(file.read())
         file.close()
@@ -29,9 +28,7 @@ def caen_msg_handler(path, t_step=0.325, time_shift=100, noise_len=400, processe
     for caen_channel in range(caen_channels_number):
         caen_ch_0lvl = []
         for laser_shot in range(processed_shots):
-            # median = statistics.median(data[laser_shot]['ch'][caen_channel][:noise_len])
             median = sorted(data[laser_shot]['ch'][caen_channel][:noise_len])[int(noise_len / 2)]
-            # signal_zero_lvl = [round(float(x) - median, 5) for x in data[laser_shot]['ch'][caen_channel]]
             signal_zero_lvl = [float(x) - median for x in data[laser_shot]['ch'][caen_channel]]
             caen_ch_0lvl.append(signal_zero_lvl)
         caen_zero_lvl.append(caen_ch_0lvl)
