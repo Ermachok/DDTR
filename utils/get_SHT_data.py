@@ -3,7 +3,7 @@ from pathlib import Path
 
 import shtRipper
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
 def log_function_name(func):
@@ -79,6 +79,7 @@ def get_DTRlaser_times(sht_number: int, sht_path: str,
 
     else:
         return False
+
 
 
 if __name__ == '__main__':

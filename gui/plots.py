@@ -42,3 +42,16 @@ def draw_separatrix(separatrix_data: dict, time: float, shot_num: int,
 
     return ax
 
+
+def draw_raw_signals(z_pos, timestamp, fiber_data: list, axs, add_flag: bool = False):
+    for ax in axs.flat:
+        if not add_flag:
+            ax.clear()
+
+    counts = [i for i in range(1024)]
+
+    for ch, ch_data in enumerate(fiber_data):
+        axs[ch].plot(counts, ch_data, label=f' {z_pos} cm, {timestamp} ms')
+
+    for ax in axs.flat:
+        ax.set_xlim(400, 600)

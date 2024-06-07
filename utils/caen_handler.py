@@ -1,11 +1,11 @@
 import multiprocessing as mp
 import time
-from pathlib import Path
-
 import msgpack
 
+from pathlib import Path
 
-def caen_msg_handler(path, t_step=0.325, time_shift=100, noise_len=400, processed_shots: int | str = 35):
+
+def caen_msg_handler(path, t_step=0.325, time_shift=100, processed_shots: int | str = 35):
     """
     :param time_shift: сдвиг для построения в одной системе координат
     :param path:путь до файла
@@ -16,7 +16,7 @@ def caen_msg_handler(path, t_step=0.325, time_shift=100, noise_len=400, processe
     """
 
     times = []
-    caen_zero_lvl = []
+    caen = []
     caen_channels_number = 16
     with path.open(mode='rb') as file:
         data = msgpack.unpackb(file.read())
@@ -25,42 +25,45 @@ def caen_msg_handler(path, t_step=0.325, time_shift=100, noise_len=400, processe
     if str.lower(str(processed_shots)) == 'all':
         processed_shots = len(data)
 
+    combiscope_times = []
     for caen_channel in range(caen_channels_number):
-        caen_ch_0lvl = []
+        caen_ch = []
         for laser_shot in range(processed_shots):
-            median = sorted(data[laser_shot]['ch'][caen_channel][:noise_len])[int(noise_len / 2)]
-            signal_zero_lvl = [float(x) - median for x in data[laser_shot]['ch'][caen_channel]]
-            caen_ch_0lvl.append(signal_zero_lvl)
-        caen_zero_lvl.append(caen_ch_0lvl)
+            if caen_channel == 0:
+                combiscope_times.append(data[laser_shot]['t'] - data[0]['t'])
+            signal = data[laser_shot]['ch'][caen_channel]
+            caen_ch.append(signal)
+        caen.append(caen_ch)
 
     for laser_shot in range(processed_shots):
-        time = [round(time_shift - caen_zero_lvl[0][laser_shot].index(max(caen_zero_lvl[0][laser_shot])) * t_step +
+        time = [round(time_shift - caen[0][laser_shot].index(max(caen[0][laser_shot])) * t_step +
                       t_step * t, 5) for t in range(1024)]
         times.append(time)
 
-    return times, caen_zero_lvl
+    return combiscope_times[1:], times, caen # [1:] - первый 0 опускаю
 
 
-def handle_all_caens(discharge_num: str, path: str, processed_shots: int | str) -> list:
+def handle_all_caens(discharge_num: str, path: str, processed_shots: int | str) -> (list, list):
     msg_files_num_x10 = [0, 1, 2, 3]
 
     all_caens = []
+    combiscope_times = []
     for msg_num in msg_files_num_x10:
         new_path = Path(f'{path}/{discharge_num}/{str(msg_num)}.msgpk')
-        times, caen_data = caen_msg_handler(new_path, processed_shots=processed_shots)
+        combiscope_times, times, caen_data = caen_msg_handler(new_path, processed_shots=processed_shots)
         all_caens.append({'caen_num': msg_num,
                           'shots_time': times,
                           'caen_channels': caen_data})
 
-    return all_caens
+    return combiscope_times, all_caens
 
 
 def handle_one_caen(args):
     discharge_num, path, msg_num, processed_shots = args
     new_path = Path(fr'{path}\{discharge_num}\{msg_num}.msgpk')
-    times, caen_data = caen_msg_handler(new_path, processed_shots=processed_shots)
+    combiscope_times,times, caen_data = caen_msg_handler(new_path, processed_shots=processed_shots)
     caen_num = msg_num
-    return {'caen_num': caen_num, 'shots_time': times, 'caen_channels': caen_data}
+    return {'caen_num': caen_num, 'shots_time': times, 'caen_channels': caen_data, 'combiscope_times': combiscope_times}
 
 
 def handle_all_caens_multiproces(discharge_num: str, path: str, msg_list: list, processed_shots: int | str) -> list:
@@ -81,12 +84,12 @@ def handle_all_caens_multiproces(discharge_num: str, path: str, msg_list: list, 
 
 if __name__ == '__main__':
     start = time.time()
-    discharge_num = '00912'
+    discharge_number = '44644'
     path_experimental_data = r'D:\Ioffe\TS\divertor_thomson\calibration\05.2024\caen_files'
-    path = r'D:\Ioffe\TS\divertor_thomson\calibration\05.2024\caen_files'
+    path_data = r'C:\Users\NE\Desktop\DTR_data\raw_TSdata'
     # all_caens = handle_all_caens(discharge_num=discharge_num, path=path_experimental_data, processed_shots=20)
     msg_list = [0, 1, 2, 3]
-    all_caens_2 = handle_all_caens_multiproces(discharge_num=discharge_num, path=path, msg_list=msg_list,
+    all_caens_2 = handle_all_caens_multiproces(discharge_num=discharge_number, path=path_data, msg_list=msg_list,
                                                processed_shots=20)
 
     print(time.time() - start)

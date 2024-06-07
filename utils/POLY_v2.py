@@ -7,6 +7,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from utils.gains import GainsEquator, Gains_T15_35, Gains_T15_34
+from utils.caen_handler import handle_all_caens_multiproces
 
 
 class Polychromator:
@@ -87,6 +88,7 @@ class Polychromator:
         """
 
         all_const = self.gain.resulting_multiplier
+        noise_len = 400
 
         all_shots_signal = []
         all_shots_noise = []
@@ -94,24 +96,23 @@ class Polychromator:
             all_ch_signal = []
             all_ch_noise = []
             for poly_ch in range(self.ch_number):
-                self.average_parasite = self.rude_pest_check(self.signals[poly_ch][1:shots_before_plasma])
-                signal_indices = [bisect.bisect_left(self.signals_time[shot], self.config[poly_ch]['sig_LeftBord']),
+                signal_ind = [bisect.bisect_left(self.signals_time[shot], self.config[poly_ch]['sig_LeftBord']),
                                   bisect.bisect_right(self.signals_time[shot],
                                                       self.config[poly_ch]['sig_RightBord'])]
 
-                signal_integral = sum(self.signals[poly_ch][shot][signal_indices[0]:signal_indices[1]]) * t_step
+                signal_lvl = sorted(self.signals[poly_ch][shot][:noise_len])[int(noise_len / 2)]
+                lvl_integral = signal_lvl * (self.config[poly_ch]['sig_RightBord'] - self.config[poly_ch]['sig_LeftBord'])
+                signal_integral = sum(self.signals[poly_ch][shot][signal_ind[0]:signal_ind[1]]) * t_step - lvl_integral
+
+                self.average_parasite = self.rude_pest_check(self.signals[poly_ch][1:shots_before_plasma], signal_lvl)
+
                 if self.average_parasite:
-                    # print(self.fiber_number, shot, poly_ch, signal_integral, self.average_parasite)
                     all_ch_signal.append((signal_integral - self.average_parasite) * all_const)
                 else:
                     all_ch_signal.append(signal_integral * all_const)
 
-                all_ch_noise.append(statistics.stdev(self.signals[poly_ch][shot][:200]) * all_const * t_step *
-                                    (signal_indices[1] - signal_indices[0]))
-
-                # print('signal', round(signal_integral * all_const, 2),
-                #       'noise', round(statistics.stdev(self.__signals[poly_ch][shot][:200]) * t_step * all_const *
-                #                      (signal_indices[1] - signal_indices[0]), 2), end='; ')
+                all_ch_noise.append((statistics.stdev(self.signals[poly_ch][shot][:200])) * all_const * t_step *
+                                    (signal_ind[1] - signal_ind[0]))
 
             all_shots_signal.append(all_ch_signal)
             all_shots_noise.append(all_ch_noise)
@@ -223,7 +224,7 @@ class Polychromator:
                 self.erros_n.append(0)
 
     @staticmethod
-    def rude_pest_check(signals_before_plasma, start_ind: int = 500, end_ind: int = 700, t_step: float = 0.325):
+    def rude_pest_check(signals_before_plasma, signal_lvl, start_ind: int = 500, end_ind: int = 700, t_step: float = 0.325):
         """
         :param signals_before_plasma: количество выстрелов перед плазмой
         :param start_ind: номер ячейки из оцифровщика, с которой начинается считаться интеграл
@@ -234,7 +235,7 @@ class Polychromator:
         pestSum = 0
         for shot in signals_before_plasma:
             pestSum += sum(shot[start_ind:end_ind])
-        pest = pestSum / len(signals_before_plasma) * t_step
+        pest = pestSum / len(signals_before_plasma) * t_step - signal_lvl * (end_ind - start_ind) * t_step
         if pest > 100:
             # print('Average summ in pest area: {pest} mV * ns\n'
             # 'There is a chance of a parasite existing'.format(pest=pest))
@@ -304,3 +305,94 @@ class Polychromator:
                     for shot in self.signals[ch]:
                         string +=f'{str(shot[count])}, '
                     w_file.write(string + '\n')
+
+
+def built_fibers(discharge_num: str, config: dict) -> (list, list[Polychromator]):
+
+    with open(config['poly_fiber_caen_connection']) as file:
+        config_connection = json.load(file)
+
+    msg_list = [0, 1, 2, 3]
+    all_caens = handle_all_caens_multiproces(discharge_num=discharge_num, path=config['path_experimental_data'],
+                                             msg_list=msg_list, processed_shots=30)
+    combiscope_times = all_caens[0]['combiscope_times']
+    handmade_poly_data = all_caens[0]['caen_channels'][2:6]
+    handmade_poly_data.insert(0, all_caens[1]['caen_channels'][6])
+
+    equatorGain = GainsEquator()
+    t15_34_Gain = Gains_T15_34()
+    t15_35_Gain = Gains_T15_35()
+
+    poly_handmade = Polychromator(poly_name="Handmade_G10", fiber_number=1, z_cm=-35.7,
+                                  config_connection=config_connection['equator_caens'][0]['channels'][2:6],
+                                  gains=equatorGain, f_expect_path=None,
+                                  spectral_calib=config['path_spectral_calibration'],
+                                  caen_time=all_caens[0]['shots_time'], caen_data=handmade_poly_data)
+
+    poly_042 = Polychromator(poly_name="eqTS_42_G10", fiber_number=2, z_cm=-37.1,
+                             config_connection=config_connection['equator_caens'][2]['channels'][1:5],
+                             gains=equatorGain, f_expect_path=config['path_eq_f_exp'],
+                             spectral_calib=config['path_spectral_calibration'],
+                             absolut_calib=config['path_absolute_calibration'],
+                             caen_time=all_caens[2]['shots_time'], caen_data=all_caens[2]['caen_channels'][1:5])
+
+    poly_047 = Polychromator(poly_name="eqTS_47_G10", fiber_number=3, z_cm=-38.6,
+                             config_connection=config_connection['equator_caens'][2]['channels'][6:10],
+                             gains=equatorGain, f_expect_path=config['path_eq_f_exp'],
+                             spectral_calib=config['path_spectral_calibration'],
+                             absolut_calib=config['path_absolute_calibration'],
+                             caen_time=all_caens[2]['shots_time'], caen_data=all_caens[2]['caen_channels'][6:10])
+
+    poly_048 = Polychromator(poly_name="eqTS_48_G10", fiber_number=4, z_cm=-39.9,
+                             config_connection=config_connection['equator_caens'][2]['channels'][11:15],
+                             gains=equatorGain, f_expect_path=config['path_eq_f_exp'],
+                             spectral_calib=config['path_spectral_calibration'],
+                             absolut_calib=config['path_absolute_calibration'],
+                             caen_time=all_caens[2]['shots_time'], caen_data=all_caens[2]['caen_channels'][11:15])
+
+    poly_049 = Polychromator(poly_name="eqTS_49_G10", fiber_number=5, z_cm=-41,
+                             config_connection=config_connection['equator_caens'][3]['channels'][1:5],
+                             gains=equatorGain, f_expect_path=config['path_eq_f_exp'],
+                             spectral_calib=config['path_spectral_calibration'],
+                             absolut_calib=config['path_absolute_calibration'],
+                             caen_time=all_caens[3]['shots_time'], caen_data=all_caens[3]['caen_channels'][1:5])
+
+    poly_050 = Polychromator(poly_name="eqTS_50_G10", fiber_number=6, z_cm=-42.2,
+                             config_connection=config_connection['equator_caens'][3]['channels'][6:10],
+                             gains=equatorGain, f_expect_path=config['path_eq_f_exp'],
+                             spectral_calib=config['path_spectral_calibration'],
+                             absolut_calib=config['path_absolute_calibration'],
+                             caen_time=all_caens[3]['shots_time'], caen_data=all_caens[3]['caen_channels'][6:10])
+
+    poly_T15_34 = Polychromator(poly_name="T15_34_G10", fiber_number=7, z_cm=-43.25,
+                                config_connection=config_connection['equator_caens'][1]['channels'][11:15],
+                                gains=t15_34_Gain, f_expect_path=config['path_T15_f_exp'],
+                                spectral_calib=config['path_spectral_calibration'],
+                                absolut_calib=config['path_absolute_calibration'],
+                                caen_time=all_caens[1]['shots_time'], caen_data=all_caens[1]['caen_channels'][11:15])
+
+    poly_T15_35 = Polychromator(poly_name="T15_35_G10", fiber_number=8, z_cm=-44.35,
+                                config_connection=config_connection['equator_caens'][3]['channels'][11:15],
+                                gains=t15_35_Gain, f_expect_path=config['path_T15_f_exp'],
+                                spectral_calib=config['path_spectral_calibration'],
+                                absolut_calib=config['path_absolute_calibration'],
+                                caen_time=all_caens[3]['shots_time'], caen_data=all_caens[3]['caen_channels'][11:15])
+
+    poly_novosib = Polychromator(poly_name="Novosib", fiber_number=9, z_cm=-45.55,
+                                 config_connection=config_connection['equator_caens'][0]['channels'][6:10],
+                                 gains=equatorGain, f_expect_path=None,
+                                 spectral_calib=config['path_spectral_calibration'],
+                                 caen_time=all_caens[0]['shots_time'], caen_data=all_caens[0]['caen_channels'][6:10])
+
+    del all_caens
+
+    fibers = [poly_042, poly_047, poly_048, poly_049, poly_050, poly_T15_34, poly_T15_35]
+
+    return combiscope_times, fibers
+
+
+def calculate_Te_ne(fibers: Polychromator | list[Polychromator]):
+    for fiber in fibers:
+        fiber.get_temperatures(print_flag=False)
+        fiber.get_density(print_flag=False)
+        fiber.get_errors()

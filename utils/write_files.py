@@ -1,7 +1,8 @@
 import os
+from utils.POLY_v2 import Polychromator
 
 
-def write_results(discharge_num, path, laser_shots_times, fibers):
+def write_results(discharge_num: str, path, laser_shots_times: list, fibers: list[Polychromator]):
     try:
         path_to_write = os.path.join(path, discharge_num)
         os.mkdir(path_to_write)
@@ -26,5 +27,5 @@ def write_results(discharge_num, path, laser_shots_times, fibers):
                 density_file.write(f'{str(fiber.z_cm)}, ' + ', '.join(result_string) + '\n')
 
     except Exception as e:
-        print(f'Error {e}')
+        print(f'Error in write_results: {e}')
         pass

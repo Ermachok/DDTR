@@ -2,6 +2,12 @@ import bisect
 import json
 import os
 
+from pathlib import Path
+
+from utils.path_parser import read_config
+from utils.write_files import write_results
+from utils.POLY_v2 import built_fibers, calculate_Te_ne
+
 
 initial_path_to_DTR_data = r'C:\Users\NE\Desktop\DTR_data\TS_data'
 initial_eq_data = 'None'
@@ -103,3 +109,15 @@ def get_equator_data(path):
                     line_data_list = line.split(', ')
                     coordinate.append(float(line_data_list[0]) / 1000)
             return {'R': coordinate}
+
+
+def download_poly_data(discharge_num):
+    config_Path = Path("PATH.ini")
+    config = read_config(config_Path)
+
+    combiscope_times, fibers = built_fibers(discharge_num, config)
+    calculate_Te_ne(fibers)
+
+    laser_shots_times = combiscope_times
+
+    return laser_shots_times, fibers

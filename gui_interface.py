@@ -1,15 +1,15 @@
 import tkinter as tk
-from tkinter import ttk
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+
 
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.widgets import SpanSelector
 
-from gui.utils import get_Xpoint, get_equator_data, get_divertor_data
-from gui.plots import draw_separatrix
+from gui.utils_gui import get_Xpoint, get_equator_data, get_divertor_data, download_poly_data
+from gui.plots import draw_separatrix, draw_raw_signals
 
 initial_path_to_mcc = r'C:\Users\NE\Desktop\DTR_data\mcc_data'
 initial_path_to_DTR_data = r'C:\Users\NE\Desktop\DTR_data\TS_data'
@@ -37,7 +37,6 @@ class App(tk.Tk):
         tabs.pack(expand=True, fill="both")
 
 
-
 class ControlTab(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
@@ -45,16 +44,87 @@ class ControlTab(ttk.Frame):
         label = ttk.Label(self, text="Tab 2")
         label.pack()
 
-        # Добавьте код для создания и настройки виджетов на второй вкладке
-
 
 class RawSignalsTab(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        label = ttk.Label(self, text="Tab 3")
-        label.pack()
+        self.poly_data = None
+        self.shot_times = None
 
+        self.data_loaded_flag = False
+        self.shot_entry_changed = False
+
+        self.input_frame = tk.Frame(self)
+        self.input_frame.pack(side="top", pady=5, anchor='nw')
+
+        self.discharge_num_entry = tk.Entry(self.input_frame, width=6)
+        self.discharge_num_entry.pack(side="left", padx=5)
+
+        self.load_button = tk.Button(self.input_frame, text="Download", command=self.load_data)
+        self.load_button.pack(side="left", padx=5)
+
+        self.indicator = tk.Label(self.input_frame, width=10, height=1, bg="red")
+        self.indicator.pack(side="left")
+
+        self.fibers_Label = tk.Label(self.input_frame, text="Choose fiber, Z =")
+        self.fibers_Label.pack(side="left")
+
+        self.box_combo_fibers = ttk.Combobox(self.input_frame, state="readonly", width=6)
+        self.box_combo_fibers.pack(side="left")
+
+        self.times_Label = tk.Label(self.input_frame, text="Choose timestamp")
+        self.times_Label.pack(side="left")
+
+        self.box_combo_times = ttk.Combobox(self.input_frame, state="readonly", width=8)
+        self.box_combo_times.pack(side="left")
+
+        self.plot_button = tk.Button(self.input_frame, text="Plot", command=self.draw_graphs)
+        self.plot_button.pack(side="left")
+
+        self.add_plot_button = tk.Button(self.input_frame, text="Add plot",
+                                         command=lambda: self.draw_graphs(add_flag=True))
+        self.add_plot_button.pack(side="left")
+
+        self.discharge_num_entry.bind("<Key>", self.entry_changed_handler)
+
+        self.fig, self.axs = plt.subplots(5, 1)
+        self.fig.subplots_adjust(left=0.07, bottom=0.05, right=0.95, top=0.96, wspace=0.2, hspace=0.15)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.canvas.get_tk_widget().pack(side="top", fill="both", expand=True, padx=1, pady=1)
+
+    def load_data(self):
+        try:
+            self.indicator.config(bg="green")
+
+            discharge_num = self.discharge_num_entry.get()
+            self.shot_times, self.poly_data = download_poly_data(discharge_num)
+
+            self.box_combo_times["values"] = [time for time in self.shot_times]
+            self.box_combo_fibers["values"] = [fiber.z_cm for fiber in self.poly_data]
+            self.data_loaded_flag = True
+        except Exception as er:
+            print(f'Error occured while loading data {er}')
+
+    def entry_changed_handler(self, event):
+        self.shot_entry_changed = True
+        self.indicator.config(bg="red")
+
+    def draw_graphs(self, add_flag: bool = False):
+        timestamp = self.box_combo_times.get()
+        z_pos = self.box_combo_fibers.get()
+        timestamp_ind = self.shot_times.index(float(timestamp))
+
+        data_for_plot = []
+        for fiber in self.poly_data:
+            if float(z_pos) == fiber.z_cm:
+                for ch in range(fiber.ch_number):
+                    data_for_plot.append(fiber.signals[ch][timestamp_ind])
+
+        draw_raw_signals(z_pos, round(float(timestamp), 3), data_for_plot, self.axs, add_flag=add_flag)
+        for ax in self.axs.flat:
+            ax.legend()
+        self.canvas.draw()
 
 
 class DTSPlotsTab(ttk.Frame):
@@ -62,31 +132,31 @@ class DTSPlotsTab(ttk.Frame):
         super().__init__(parent)
         self.sht_data = {}
 
-        self.input_frame = tk.Frame(self)
-        self.input_frame.pack(side="top", pady=5, anchor='nw')
+        self.input_shot_frame = tk.Frame(self)
+        self.input_shot_frame.pack(side="top", pady=5, anchor='nw')
 
-        self.path_label = tk.Label(self.input_frame, text="PATH:")
+        self.path_label = tk.Label(self.input_shot_frame, text="PATH:")
         self.path_label.pack(side="left", padx=5)
 
-        self.shot_num_entry = tk.Entry(self.input_frame, width=10)
+        self.shot_num_entry = tk.Entry(self.input_shot_frame, width=10)
         self.shot_num_entry.pack(side="left", padx=5)
 
-        self.button_update = tk.Button(self.input_frame, text="Update", command=self.button_update_clicked)
+        self.button_update = tk.Button(self.input_shot_frame, text="Update", command=self.button_update_clicked)
         self.button_update.pack(side="left", padx=5)
 
-        self.button_refresh = tk.Button(self.input_frame, text="Refresh", command=self.button_refresh_clicked)
+        self.button_refresh = tk.Button(self.input_shot_frame, text="Refresh", command=self.button_refresh_clicked)
         self.button_refresh.pack(side="left", padx=5)
 
-        self.mcc_label = tk.Label(self.input_frame, text="MCC TIME:")
+        self.mcc_label = tk.Label(self.input_shot_frame, text="MCC TIME:")
         self.mcc_label.pack(side="left", padx=5)
 
-        self.mcc_entry = tk.Entry(self.input_frame, width=10)
+        self.mcc_entry = tk.Entry(self.input_shot_frame, width=10)
         self.mcc_entry.pack(side="left", padx=5)
 
-        self.button_mcc = tk.Button(self.input_frame, text="Get MCC", command=self.button_mcc_clicked)
+        self.button_mcc = tk.Button(self.input_shot_frame, text="Get MCC", command=self.button_mcc_clicked)
         self.button_mcc.pack(side="left", padx=5)
 
-        self.button_add_mcc = tk.Button(self.input_frame, text="Add MCC", command=self.button_add_mcc_clicked)
+        self.button_add_mcc = tk.Button(self.input_shot_frame, text="Add MCC", command=self.button_add_mcc_clicked)
         self.button_add_mcc.pack(side="left", padx=5)
 
         self.fig, self.axs = plt.subplots(2, 3)
@@ -148,7 +218,7 @@ class DTSPlotsTab(ttk.Frame):
 
 
         self.axs[0][0].set_ylabel('Te(t)')
-        self.axs[0][0].set_ylim(0, 1500)
+        self.axs[0][0].set_ylim(0, 1000)
 
         self.axs[0][1].set_ylabel('ne(t)')
         self.axs[0][1].set_ylim(0, 1e20)
@@ -157,7 +227,7 @@ class DTSPlotsTab(ttk.Frame):
         self.axs[0][2].set_ylim(0, 5e21)
 
         self.axs[1][0].set_ylabel('Te(Z)')
-        self.axs[1][0].set_ylim(0, 1500)
+        self.axs[1][0].set_ylim(0, 1000)
 
         self.axs[1][1].set_ylabel('ne(Z)')
         self.axs[1][1].set_ylim(0, 1e20)
@@ -167,6 +237,7 @@ class DTSPlotsTab(ttk.Frame):
 
         for ax in self.axs[0]:
             ax.set_xlabel('time(ms)')
+            ax.set_xlim(140, 230)
 
         for ax in self.axs[1]:
             ax.invert_xaxis()
