@@ -3,8 +3,9 @@ import math
 import os
 import statistics
 
-from POLY_v2 import Polychromator
-from calibrations.spectral_calibration.spectral_calibration import get_filters_data, get_avalanche_data
+from utils.POLY_v2 import Polychromator
+from calibrations.spectral_calibration.spectral_calibration import (get_filters_data, get_avalanche_data_amper,
+                                                                    get_avalanche_data_phe)
 
 
 def linear_interpolation(x_point: float, Xdata: list, Ydata: list) -> float:
@@ -112,16 +113,22 @@ def phe_to_laser(poly: Polychromator, laser_ophir: list):
 
 def calculate_calibration_coef(fibers: list[Polychromator], ophir_data_path: str, ophir_shot_name, p_torr: float,
                                gas_temperature: float):
-    avalanche_Path = r'D:\Ioffe\TS\divertor_thomson\different_calcuations_py\DTS_main\script\spectral_calibration\aw.csv'
+    avalanche_Path = r'C:\Users\NE\PycharmProjects\DDTS\calibrations\calibration_datasheets\aw_hama.csv'
 
-    filter_Path = r'D:\Ioffe\TS\divertor_thomson\different_calcuations_py\DTS_main\script\spectral_calibration\filters_equator.csv'
+    filter_Path = r'C:\Users\NE\PycharmProjects\DDTS\calibrations\calibration_datasheets\filters_equator.csv'
 
     k_bolt = 1.38E-23  # J/K
     gas_temperature = gas_temperature + 273.15  # K
     p_pascal = p_torr * 133.3  # pascal
     n = p_pascal / (k_bolt * gas_temperature)
+    h_plank = 6.626E-34
+    c_speed = 3E8
+    laser_wl = 1064.4E-9
+    polarization_coef = 1.75
 
-    avalanche_wl, avalanche_phe = get_avalanche_data(avalanche_Path)
+    photon_energy = h_plank * c_speed / laser_wl
+
+    avalanche_wl, avalanche_phe = get_avalanche_data_phe(avalanche_Path)
     filters_wl, filters_transm = get_filters_data(filter_Path, filters_transposed=True)
     raman_wl, raman_section = get_raman_wl_section(gas_temperature=gas_temperature, las_wl=1064.4E-9)
 
@@ -129,16 +136,18 @@ def calculate_calibration_coef(fibers: list[Polychromator], ophir_data_path: str
 
     result_absolut = {}
     for fiber in fibers:
-        calibPhe_to_laser = phe_to_laser(fiber, laser_ophir_data)
+        calib_phe_to_laser = phe_to_laser(fiber, laser_ophir_data)
 
         integral = 0
-        for x, y in zip(raman_wl, raman_section):
-            filter = linear_interpolation(x, filters_wl, filters_transm[0])
-            detector = linear_interpolation(x, avalanche_wl, avalanche_phe)
+        for ram_wl, ram_sec in zip(raman_wl, raman_section):
+            filter = linear_interpolation(ram_wl, filters_wl,  filters_transm[0])
+            detector = linear_interpolation(ram_wl, avalanche_wl, avalanche_phe)
 
-            integral += y * filter * detector
+            integral += ram_sec * filter * detector
 
-        calibration_result = statistics.median(calibPhe_to_laser) / (integral * n)
+        calibration_result = statistics.median(calib_phe_to_laser) * photon_energy / (integral * polarization_coef * n)
         result_absolut[fiber.poly_name] = calibration_result
 
     return result_absolut
+
+

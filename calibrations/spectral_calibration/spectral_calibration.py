@@ -3,7 +3,7 @@ import json
 from datetime import date
 
 
-def get_avalanche_data(avalanche_path: str):
+def get_avalanche_data_phe(avalanche_path: str):
     """
     :param avalanche_path:
     :return: 2 списка: длину волны в нм и квантовый выход phe/photon без усиления!
@@ -30,6 +30,25 @@ def get_avalanche_data(avalanche_path: str):
 
     return aval_wl, aval_phe
 
+
+def get_avalanche_data_amper(avalanche_path: str):
+    """
+    :param avalanche_path:
+    :return: 2 списка: длину волны в нм и квантовый выход phe/photon без усиления!
+    """
+    with open(avalanche_path) as avalanche_data:
+        aval_wl = []
+        aval_aw = []
+        for line in avalanche_data.readlines():
+            if any(sym.isalpha() for sym in line):
+                pass
+            else:
+                line = line[:-2]
+                wl, aw = line.split(',')
+                aval_wl.append(float(wl))
+                aval_aw.append(float(aw))
+
+    return aval_wl, aval_aw
 
 def get_lamp_data(lamp_path: str):
     """
@@ -139,19 +158,21 @@ def get_integrals(filtersLampAval_data: list, wl_step: float) -> list:
     return all_ch_integrals
 
 
-def linear_interpolation(x_point: float, Xdata: list, Ydata: list) -> float:
-    """
-    :param x_point: X-точка, в которой надо найти значение
-    :param Xdata: 2 точки имеющихся данных по Х
-    :param Ydata: 2 точки имеющихся данных по y
-    :return: значение в точке X c помощью линейной интерполяции
-    """
+def linear_interpolation(point, coord_array, value_array) -> float:
+    if point <= coord_array[0]:
+        return value_array[0]
+    if point >= coord_array[-1]:
+        return value_array[-1]
 
-    if Xdata[0] > x_point > Xdata[1]:
-        raise Exception
+    idx = bisect.bisect_left(coord_array, point)
+    if idx == 0:
+        return value_array[0]
+    elif idx == len(coord_array):
+        return value_array[-1]
     else:
-        y_point = Ydata[0] + (Ydata[1] - Ydata[0]) / (Xdata[1] - Xdata[0]) * (x_point - Xdata[0])
-        return y_point
+        alpha = (point - coord_array[idx - 1]) / (coord_array[idx] - coord_array[idx - 1])
+        interpolated_value = value_array[idx - 1] + alpha * (value_array[idx] - value_array[idx - 1])
+        return interpolated_value
 
 
 def calculate_Ki(calibration_path: str, filterIntegrals: list,
@@ -184,7 +205,7 @@ if __name__ == '__main__':
     lamp_Path = '../calibration_datasheets/Lab_spectrum.txt'
     filter_Path = 'filters_equator.csv'
 
-    avalanche_wl, avalanche_phe = get_avalanche_data(avalanche_Path)
+    avalanche_wl, avalanche_phe = get_avalanche_data_phe(avalanche_Path)
     lamp_wl, lamp_intensity = get_lamp_data(lamp_Path)
     filters_wl, filter_transm = get_filters_data(filter_Path)
 

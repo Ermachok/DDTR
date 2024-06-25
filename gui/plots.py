@@ -12,8 +12,8 @@ def draw_separatrix(separatrix_data: dict, time: float, shot_num: int,
 
     elif add_flag:
         colors = ['g', 'r', 'c', 'm', 'y', 'k', 'orange', 'purple', 'brown', 'pink', 'gray']
-
         color = random.choice(colors)
+
         ax.plot(separatrix_data['body']['R'], separatrix_data['body']['Z'], color, label=time)
         ax.plot(separatrix_data['leg_1']['R'], separatrix_data['leg_1']['Z'], color)
         ax.plot(separatrix_data['leg_2']['R'], separatrix_data['leg_2']['Z'], color)
@@ -35,7 +35,7 @@ def draw_separatrix(separatrix_data: dict, time: float, shot_num: int,
         ax.set_title(f'{shot_num}, time: {time}')
 
         ax.set_xlim(0.1, 0.625)
-        ax.set_ylim(-0.5, 0.05)
+        ax.set_ylim(-0.5, 0.5)
         ax.set_aspect('equal')
         ax.legend()
         ax.grid()
@@ -51,7 +51,21 @@ def draw_raw_signals(z_pos, timestamp, fiber_data: list, axs, add_flag: bool = F
     counts = [i for i in range(1024)]
 
     for ch, ch_data in enumerate(fiber_data):
-        axs[ch].plot(counts, ch_data, label=f' {z_pos} cm, {timestamp} ms')
+        axs[ch][0].plot(counts, ch_data, label=f' {z_pos} cm, {timestamp} ms')
 
-    for ax in axs.flat:
-        ax.set_xlim(400, 600)
+    for ax_ind in range(4):
+        axs[ax_ind][0].legend()
+        axs[ax_ind][0].set_xlim(420, 600)
+
+
+def draw_phe(z_pos, timestamp, ch_data: list, ax, add_flag: bool = False):
+
+    if not add_flag:
+        ax.clear()
+
+    channels_num = [1 + i for i in range(len(ch_data))]
+
+    ax.plot(channels_num, ch_data, '-*', label=f'{z_pos} cm, {timestamp} ms')
+    ax.set_ylim(0, max(ch_data) * 1.1)
+    ax.set_xticks(channels_num)
+    ax.legend()

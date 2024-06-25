@@ -7,7 +7,9 @@ from utils.POLY_v2 import built_fibers, calculate_Te_ne
 
 
 if __name__ == '__main__':
-    discharge_num = '44644'
+
+    # следи за числом выстрелов в обработке, метод гет интегралс в полихроматоре
+    discharge_num = '44643'
     config_Path = Path('PATH.ini')
     config = read_config(config_Path)
 
@@ -15,5 +17,8 @@ if __name__ == '__main__':
     calculate_Te_ne(fibers)
 
     laser_shots_times = combiscope_times
+
+    # for fiber in fibers:
+    #     fiber.plot_raw_signals(from_shot=0, to_shot=10)
 
     write_results(discharge_num, config['save_data_path'], laser_shots_times, fibers)

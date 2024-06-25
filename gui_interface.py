@@ -9,7 +9,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.widgets import SpanSelector
 
 from gui.utils_gui import get_Xpoint, get_equator_data, get_divertor_data, download_poly_data
-from gui.plots import draw_separatrix, draw_raw_signals
+from gui.plots import draw_separatrix, draw_raw_signals, draw_phe
 
 initial_path_to_mcc = r'C:\Users\NE\Desktop\DTR_data\mcc_data'
 initial_path_to_DTR_data = r'C:\Users\NE\Desktop\DTR_data\TS_data'
@@ -88,7 +88,8 @@ class RawSignalsTab(ttk.Frame):
 
         self.discharge_num_entry.bind("<Key>", self.entry_changed_handler)
 
-        self.fig, self.axs = plt.subplots(5, 1)
+        nrows, ncols = (4, 2)
+        self.fig, self.axs = plt.subplots(nrows, ncols)
         self.fig.subplots_adjust(left=0.07, bottom=0.05, right=0.95, top=0.96, wspace=0.2, hspace=0.15)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.get_tk_widget().pack(side="top", fill="both", expand=True, padx=1, pady=1)
@@ -115,15 +116,17 @@ class RawSignalsTab(ttk.Frame):
         z_pos = self.box_combo_fibers.get()
         timestamp_ind = self.shot_times.index(float(timestamp))
 
-        data_for_plot = []
+        raw_data_plot = []
+        phe_data_plot = []
         for fiber in self.poly_data:
             if float(z_pos) == fiber.z_cm:
                 for ch in range(fiber.ch_number):
-                    data_for_plot.append(fiber.signals[ch][timestamp_ind])
+                    raw_data_plot.append(fiber.signals[ch][timestamp_ind + 1])
 
-        draw_raw_signals(z_pos, round(float(timestamp), 3), data_for_plot, self.axs, add_flag=add_flag)
-        for ax in self.axs.flat:
-            ax.legend()
+                phe_data_plot = fiber.integralsPhe[timestamp_ind]#+1 из-за записи дорожки для привязки к комбископу
+        draw_raw_signals(z_pos, float(timestamp), raw_data_plot, self.axs, add_flag=add_flag)
+        draw_phe(z_pos, float(timestamp), phe_data_plot, self.axs[0][1], add_flag=add_flag)
+
         self.canvas.draw()
 
 
@@ -237,7 +240,7 @@ class DTSPlotsTab(ttk.Frame):
 
         for ax in self.axs[0]:
             ax.set_xlabel('time(ms)')
-            ax.set_xlim(140, 230)
+            ax.set_xlim(110, 240)
 
         for ax in self.axs[1]:
             ax.invert_xaxis()

@@ -343,8 +343,8 @@
 		  "poly": "T15_34_G10",
 		  "poly_sp_ch": 1,
 		  "dtr_fiber": 7,
-		  "sig_LeftBord": 23,
-		  "sig_RightBord": 36,
+		  "sig_LeftBord": 20,
+		  "sig_RightBord": 33,
 		  "pest_LeftBord": 33,
 		  "pest_RightBord": 51
 		},
@@ -353,8 +353,8 @@
 		  "poly": "T15_34_G10",
 		  "poly_sp_ch": 2,
 		  "dtr_fiber": 7,
-		  "sig_LeftBord": 26,
-		  "sig_RightBord": 39,
+		  "sig_LeftBord": 23,
+		  "sig_RightBord": 36,
 		  "pest_LeftBord": 0,
 		  "pest_RightBord": 0
 		},
@@ -363,8 +363,8 @@
 		  "poly": "T15_34_G10",
 		  "poly_sp_ch": 3,
 		  "dtr_fiber": 7,
-		  "sig_LeftBord": 4,
-		  "sig_RightBord": 5,
+		  "sig_LeftBord": 25,
+		  "sig_RightBord": 37,
 		  "pest_LeftBord": 0,
 		  "pest_RightBord": 0
 		},
@@ -409,7 +409,7 @@
 		  "poly_sp_ch": 1,
 		  "dtr_fiber": 2,
 		  "sig_LeftBord": 24,
-		  "sig_RightBord": 38,
+		  "sig_RightBord": 35,
 		  "pest_LeftBord": 30,
 		  "pest_RightBord": 53
 		},
@@ -459,7 +459,7 @@
 		  "poly_sp_ch": 1,
 		  "dtr_fiber": 3,
 		  "sig_LeftBord": 24,
-		  "sig_RightBord": 38,
+		  "sig_RightBord": 36,
 		  "pest_LeftBord": 36,
 		  "pest_RightBord": 50
 		},
@@ -509,7 +509,7 @@
 		  "poly_sp_ch": 1,
 		  "dtr_fiber": 4,
 		  "sig_LeftBord": 24,
-		  "sig_RightBord": 38,
+		  "sig_RightBord": 36,
 		  "pest_LeftBord": 33,
 		  "pest_RightBord": 51
 		},
@@ -519,7 +519,7 @@
 		  "poly_sp_ch": 2,
 		  "dtr_fiber": 4,
 		  "sig_LeftBord": 27,
-		  "sig_RightBord": 41,
+		  "sig_RightBord": 40,
 		  "pest_LeftBord": 0,
 		  "pest_RightBord": 0
 		},
@@ -573,9 +573,9 @@
 		  "poly": "eqTS_49_G10",
 		  "poly_sp_ch": 1,
 		  "dtr_fiber": 5,
-		  "sig_LeftBord": 24,
-		  "sig_RightBord": 38,
-		  "pest_LeftBord": 31,
+		  "sig_LeftBord": 24.5,
+		  "sig_RightBord": 37,
+		  "pest_LeftBord": 37,
 		  "pest_RightBord": 50
 		},
 		{
@@ -624,8 +624,8 @@
 		  "poly_sp_ch": 1,
 		  "dtr_fiber": 6,
 		  "sig_LeftBord": 24,
-		  "sig_RightBord": 38,
-		  "pest_LeftBord": 36,
+		  "sig_RightBord": 37,
+		  "pest_LeftBord": 37,
 		  "pest_RightBord": 50
 		},
 		{
@@ -673,9 +673,9 @@
 		  "poly": "T15_35_G10",
 		  "poly_sp_ch": 1,
 		  "dtr_fiber": 8,
-		  "sig_LeftBord": 23,
-		  "sig_RightBord": 36,
-		  "pest_LeftBord": 33,
+		  "sig_LeftBord": 20,
+		  "sig_RightBord": 31,
+		  "pest_LeftBord": 31,
 		  "pest_RightBord": 51
 		},
 		{
@@ -683,8 +683,8 @@
 		  "poly": "T15_35_G10",
 		  "poly_sp_ch": 2,
 		  "dtr_fiber": 8,
-		  "sig_LeftBord": 26,
-		  "sig_RightBord": 39,
+		  "sig_LeftBord": 23,
+		  "sig_RightBord": 32,
 		  "pest_LeftBord": 0,
 		  "pest_RightBord": 0
 		},
@@ -693,8 +693,8 @@
 		  "poly": "T15_35_G10",
 		  "poly_sp_ch": 3,
 		  "dtr_fiber": 8,
-		  "sig_LeftBord": 4,
-		  "sig_RightBord": 5,
+		  "sig_LeftBord": 26,
+		  "sig_RightBord": 37,
 		  "pest_LeftBord": 0,
 		  "pest_RightBord": 0
 		},

@@ -30,17 +30,17 @@ def caen_msg_handler(path, t_step=0.325, time_shift=100, processed_shots: int | 
         caen_ch = []
         for laser_shot in range(processed_shots):
             if caen_channel == 0:
-                combiscope_times.append(data[laser_shot]['t'] - data[0]['t'])
+                combiscope_times.append(round(data[laser_shot]['t'] - data[0]['t'], 3))
             signal = data[laser_shot]['ch'][caen_channel]
             caen_ch.append(signal)
         caen.append(caen_ch)
 
     for laser_shot in range(processed_shots):
-        time = [round(time_shift - caen[0][laser_shot].index(max(caen[0][laser_shot])) * t_step +
-                      t_step * t, 5) for t in range(1024)]
+        max_position_ind = caen[0][laser_shot].index(max(caen[0][laser_shot]))
+        time = [time_shift - (max_position_ind - t) * t_step for t in range(1024)]
         times.append(time)
 
-    return combiscope_times[1:], times, caen # [1:] - первый 0 опускаю
+    return combiscope_times[1:], times, caen  # [1:] - первый нулевой запуск опускаю
 
 
 def handle_all_caens(discharge_num: str, path: str, processed_shots: int | str) -> (list, list):

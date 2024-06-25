@@ -33,6 +33,9 @@ class Polychromator:
         self.ch_number = len(self.signals)
         self.gain = gains
 
+        self.signals_integrals = None
+        self.signals_noise_integrals = None
+
         self.f_expected_path = f_expect_path
         self.expected_data = None
         self.config = config_connection
@@ -50,8 +53,8 @@ class Polychromator:
         self.temperatures = []
         self.density = []
 
-        self.erros_T = []
-        self.erros_n = []
+        self.errors_T = []
+        self.errors_n = []
 
     def load_spectral_calibration(self, spectral_calib_path):
         try:
@@ -76,7 +79,7 @@ class Polychromator:
             print(f'\n{self.poly_name} NO ABSOLUTE CALIBRATION DATA, {e}')
             pass
 
-    def get_signal_integrals(self, shots_before_plasma: int = 9, shots_after: int = 15,
+    def get_signal_integrals(self, shots_before_plasma: int = 4, shots_after: int = 17,
                              t_step: float = 0.325) -> tuple[list, list]:
         """
         RETURNS PHE
@@ -97,19 +100,13 @@ class Polychromator:
             all_ch_noise = []
             for poly_ch in range(self.ch_number):
                 signal_ind = [bisect.bisect_left(self.signals_time[shot], self.config[poly_ch]['sig_LeftBord']),
-                                  bisect.bisect_right(self.signals_time[shot],
-                                                      self.config[poly_ch]['sig_RightBord'])]
+                              bisect.bisect_right(self.signals_time[shot], self.config[poly_ch]['sig_RightBord'])]
 
-                signal_lvl = sorted(self.signals[poly_ch][shot][:noise_len])[int(noise_len / 2)]
+                signal_lvl = statistics.median(self.signals[poly_ch][shot][:noise_len])
                 lvl_integral = signal_lvl * (self.config[poly_ch]['sig_RightBord'] - self.config[poly_ch]['sig_LeftBord'])
                 signal_integral = sum(self.signals[poly_ch][shot][signal_ind[0]:signal_ind[1]]) * t_step - lvl_integral
 
-                self.average_parasite = self.rude_pest_check(self.signals[poly_ch][1:shots_before_plasma], signal_lvl)
-
-                if self.average_parasite:
-                    all_ch_signal.append((signal_integral - self.average_parasite) * all_const)
-                else:
-                    all_ch_signal.append(signal_integral * all_const)
+                all_ch_signal.append(signal_integral * all_const)
 
                 all_ch_noise.append((statistics.stdev(self.signals[poly_ch][shot][:200])) * all_const * t_step *
                                     (signal_ind[1] - signal_ind[0]))
@@ -128,10 +125,10 @@ class Polychromator:
         :return:
         """
         fe_data = self.get_expected_fe()
-        signals, noises = self.get_signal_integrals()
+        self.signals_integrals, self.signals_noise_integrals = self.get_signal_integrals()
         ch_nums = self.ch_number
         results = []
-        for shot, noise in zip(signals, noises):
+        for shot, noise in zip(self.signals_integrals, self.signals_noise_integrals):
             ans = []
             for index, (T_e, f_e) in enumerate(fe_data.items()):
                 khi = 0
@@ -167,10 +164,11 @@ class Polychromator:
         elector_radius = 6.652E-29
 
         fe_data = self.get_expected_fe()
-        signals, noises = self.get_signal_integrals()
 
+        if not self.temperatures:
+            self.get_temperatures()
 
-        for shot, noise, T_e in zip(signals, noises, self.temperatures):
+        for shot, noise, T_e in zip(self.signals_integrals, self.signals_noise_integrals, self.temperatures):
             sum_numerator = 0
             sum_divider = 0
             for ch in range(self.ch_number):
@@ -213,18 +211,19 @@ class Polychromator:
                 M_errn = sum_derivative_fe_to_noise / (
                         sum_fe_to_noise * sum_derivative_fe_to_noise - sum_fe_derivative_fe_to_noise)
 
-                self.erros_T.append(str(math.sqrt(M_errT / electron_radius ** 2 /
-                                                  (self.absolut_calibration * float(
+                self.errors_T.append(str(math.sqrt(M_errT / electron_radius ** 2 /
+                                                   (self.absolut_calibration * float(
                                                       self.density[shot_num]) * laser_energy) ** 2)))
 
-                self.erros_n.append(str(math.sqrt(M_errn / electron_radius ** 2 /
-                                                  (self.absolut_calibration * laser_energy) ** 2)))
+                self.errors_n.append(str(math.sqrt(M_errn / electron_radius ** 2 /
+                                                   (self.absolut_calibration * laser_energy) ** 2)))
             except (IndexError, ZeroDivisionError, ValueError):
-                self.erros_T.append(0)
-                self.erros_n.append(0)
+                self.errors_T.append(0)
+                self.errors_n.append(0)
 
     @staticmethod
-    def rude_pest_check(signals_before_plasma, signal_lvl, start_ind: int = 500, end_ind: int = 700, t_step: float = 0.325):
+    def rude_pest_check(signals_before_plasma, signal_lvl,
+                        start_ind: int = 500, end_ind: int = 700, t_step: float = 0.325):
         """
         :param signals_before_plasma: количество выстрелов перед плазмой
         :param start_ind: номер ячейки из оцифровщика, с которой начинается считаться интеграл
@@ -307,14 +306,20 @@ class Polychromator:
                     w_file.write(string + '\n')
 
 
-def built_fibers(discharge_num: str, config: dict) -> (list, list[Polychromator]):
+def built_fibers(discharge_num: str, config: dict, calibration_flag: bool = False) -> (list, list[Polychromator]):
 
     with open(config['poly_fiber_caen_connection']) as file:
         config_connection = json.load(file)
 
     msg_list = [0, 1, 2, 3]
-    all_caens = handle_all_caens_multiproces(discharge_num=discharge_num, path=config['path_experimental_data'],
-                                             msg_list=msg_list, processed_shots=30)
+
+    if calibration_flag:
+        all_caens = handle_all_caens_multiproces(discharge_num=discharge_num, path=config['path_calib_data'],
+                                                 msg_list=msg_list, processed_shots='all')
+    else:
+        all_caens = handle_all_caens_multiproces(discharge_num=discharge_num, path=config['path_experimental_data'],
+                                                 msg_list=msg_list, processed_shots=30)
+
     combiscope_times = all_caens[0]['combiscope_times']
     handmade_poly_data = all_caens[0]['caen_channels'][2:6]
     handmade_poly_data.insert(0, all_caens[1]['caen_channels'][6])

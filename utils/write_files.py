@@ -14,7 +14,7 @@ def write_results(discharge_num: str, path, laser_shots_times: list, fibers: lis
             temperature_file.write('Z(cm), ' + ', error, '.join(laser_shots_times[from_shot:to_shot]) + ', error\n')
             for fiber in fibers:
                 result_string = [f'{t_e}, {te_err}' for t_e, te_err in
-                                 zip(fiber.temperatures[from_shot:to_shot], fiber.erros_T[from_shot:to_shot])]
+                                 zip(fiber.temperatures[from_shot:to_shot], fiber.errors_T[from_shot:to_shot])]
                 temperature_file.write(f'{str(fiber.z_cm)}, ' + ', '.join(result_string) + '\n')
 
         with open(rf'{path_to_write}\{discharge_num}_ne.csv', 'w') as density_file:
@@ -23,7 +23,7 @@ def write_results(discharge_num: str, path, laser_shots_times: list, fibers: lis
             density_file.write('Z(cm), ' + ', error, '.join(laser_shots_times[from_shot:to_shot]) + ', error\n')
             for fiber in fibers:
                 result_string = [f'{n_e}, {ne_err}' for n_e, ne_err in
-                                 zip(fiber.density[from_shot:to_shot], fiber.erros_n[from_shot:to_shot])]
+                                 zip(fiber.density[from_shot:to_shot], fiber.errors_n[from_shot:to_shot])]
                 density_file.write(f'{str(fiber.z_cm)}, ' + ', '.join(result_string) + '\n')
 
     except Exception as e:
