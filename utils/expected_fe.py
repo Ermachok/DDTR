@@ -32,7 +32,7 @@ def f_e_calc(avalanche_Path, filter_Path):
 
     wl_step = 0.2
     wl_grid = [700 + wl_step * step_count for step_count in range(1825)]
-    Te_grid = [1 + 0.5 * step for step in range(3000)]
+    Te_grid = [1 + 0.2 * step for step in range(5000)]
 
     avalanche_aw_interpolation = [linear_interpolation(wl, avalanche_wl, avalanche) for wl in wl_grid]
     filters_interpolation = []
@@ -53,9 +53,6 @@ def f_e_calc(avalanche_Path, filter_Path):
             all_filters.append(integral * wl_step * 1E-9)
         result[T] = all_filters
 
-    with open('../config/f_expected_equator_june2024.json', 'w') as f_file:
-         json.dump(result, f_file, indent=4)
-
 
     return result
 
@@ -67,5 +64,6 @@ if __name__ == '__main__':
 
     f_e = f_e_calc(avalanche_Path, filter_Path)
 
-
+    with open('../config/f_expected_equator_june2024_v3.json', 'w') as f_file:
+        json.dump(f_e, f_file, indent=4)
 

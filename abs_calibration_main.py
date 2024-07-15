@@ -18,5 +18,5 @@ if __name__ == '__main__':
                                                      ophir_shot_name=ophir_shot_name,
                                                      p_torr=80, gas_temperature=23)
 
-    with open('calibrations/calibration_configs/absolute_calib_june2024.json', 'w') as file:
+    with open('calibrations/calibration_configs/absolute_calib_june2024_v3.json', 'w') as file:
         json.dump(absolut_calibration, file, indent=4)

@@ -1,8 +1,7 @@
 import random
+import bisect
 import matplotlib.pyplot as plt
-
-
-initial_path_to_mcc = r'C:\Users\NE\Desktop\DTR_data\mcc_data'
+from gui.utils_gui import find_nearest
 
 
 def draw_separatrix(separatrix_data: dict, time: float, shot_num: int,
@@ -35,7 +34,7 @@ def draw_separatrix(separatrix_data: dict, time: float, shot_num: int,
         ax.set_title(f'{shot_num}, time: {time}')
 
         ax.set_xlim(0.1, 0.625)
-        ax.set_ylim(-0.5, 0.5)
+        ax.set_ylim(-0.51, 0.03)
         ax.set_aspect('equal')
         ax.legend()
         ax.grid()
@@ -55,7 +54,7 @@ def draw_raw_signals(z_pos, timestamp, fiber_data: list, axs, add_flag: bool = F
 
     for ax_ind in range(4):
         axs[ax_ind][0].legend()
-        axs[ax_ind][0].set_xlim(420, 600)
+        #axs[ax_ind][0].set_xlim(420, 600)
 
 
 def draw_phe(z_pos, timestamp, ch_data: list, ax, add_flag: bool = False):
@@ -68,4 +67,28 @@ def draw_phe(z_pos, timestamp, ch_data: list, ax, add_flag: bool = False):
     ax.plot(channels_num, ch_data, '-*', label=f'{z_pos} cm, {timestamp} ms')
     ax.set_ylim(0, max(ch_data) * 1.1)
     ax.set_xticks(channels_num)
+    ax.legend()
+
+
+def draw_ir_camera(shot_num: str, ir_data: dict, ax):
+    ax.set_xlabel('R')
+    ax.set_ylabel('Temperature')
+
+    ax.plot(ir_data['radii'], [0 for _ in range(len(ir_data['radii']))],
+                    label=shot_num)
+
+
+def draw_expected(fe_data: dict, ax):
+
+    all_channels = {f'{idx_ch + 1}': [] for idx_ch in range(len(fe_data['1.0']))}
+    Te_grid = fe_data['Te_grid']
+    for index,  f_e in enumerate(fe_data.values()):
+        if index > 1:
+            for idx_ch, value in enumerate(f_e):
+                all_channels[f'{idx_ch + 1}'].append(value)
+
+    for ch_idx, ch_data in all_channels.items():
+        ax.plot(Te_grid, ch_data, label=f'{ch_idx}')
+
+    ax.set_xlim([0, 150])
     ax.legend()

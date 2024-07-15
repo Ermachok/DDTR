@@ -1,16 +1,23 @@
 import bisect
 import json
 import os
-
 from pathlib import Path
+import numpy as np
 
 from utils.path_parser import read_config
-from utils.write_files import write_results
 from utils.POLY_v2 import built_fibers, calculate_Te_ne
+from utils.diagnostic_utils import LaserNdYag
 
 
-initial_path_to_DTR_data = r'C:\Users\NE\Desktop\DTR_data\TS_data'
-initial_eq_data = 'None'
+initial_path_to_mcc = r'C:\TS_data\experimental_data\mcc_data'
+initial_path_to_DTR_data = r'C:\TS_data\processed_shots'
+initial_path_ir_camera = r'C:\TS_data\IR_data\Result_Temperature'
+
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
 
 
 def get_Xpoint(path: str, timestamp_base: float) -> dict:
@@ -47,6 +54,7 @@ def get_Xpoint(path: str, timestamp_base: float) -> dict:
 
 
 def get_divertor_data(shot_number):
+
     path = fr'{initial_path_to_DTR_data}\%d' % int(shot_number)
     files = os.listdir(path)
     coordinate = []
@@ -94,7 +102,36 @@ def get_divertor_data(shot_number):
             'Te(t)': Te_all, 'Te_err(t)': Te_err_all}
 
 
+def get_ir_data(shot_num):
+    file_path = f'{initial_path_ir_camera}%s.csv' % shot_num
+
+    try:
+        with open(file_path, 'r') as data_file:
+            data = data_file.readlines()
+    except Exception:
+        raise FileNotFoundError
+
+    result = {
+        'times_ms': [],
+        'radii': [],
+    }
+    for ind, line in enumerate(data):
+        line_data_list = line.split(',')
+        if ind == 0:
+            times = [float(time) for time in line_data_list[1:]]
+            result['times_ms'] = times
+            for time in times:
+                result[time] = []
+        else:
+            result['radii'].append(float(line_data_list[0]))
+            for time_ind, temperature in enumerate(line_data_list[1:]):
+                result[times[time_ind]].append(float(temperature))
+
+    return result
+
+
 def get_equator_data(path):
+    initial_eq_data = None
     path = fr'{initial_eq_data}\%d' % int(path)
     files = os.listdir(path)
     coordinate = []
@@ -115,7 +152,9 @@ def download_poly_data(discharge_num):
     config_Path = Path("PATH.ini")
     config = read_config(config_Path)
 
-    combiscope_times, fibers = built_fibers(discharge_num, config)
+    laser = LaserNdYag(laser_energy=1.5, laser_wl=1064.4E-9)
+
+    combiscope_times, fibers = built_fibers(discharge_num, config, laser=laser)
     calculate_Te_ne(fibers)
 
     laser_shots_times = combiscope_times

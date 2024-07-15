@@ -1,18 +1,19 @@
 import tkinter as tk
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import bisect
 
 
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from matplotlib.widgets import SpanSelector
+from matplotlib.widgets import SpanSelector, Slider
 
-from gui.utils_gui import get_Xpoint, get_equator_data, get_divertor_data, download_poly_data
-from gui.plots import draw_separatrix, draw_raw_signals, draw_phe
+from gui.utils_gui import get_Xpoint, get_divertor_data, download_poly_data, get_ir_data
+from gui.plots import draw_separatrix, draw_raw_signals, draw_phe, draw_ir_camera, draw_expected
 
-initial_path_to_mcc = r'C:\Users\NE\Desktop\DTR_data\mcc_data'
-initial_path_to_DTR_data = r'C:\Users\NE\Desktop\DTR_data\TS_data'
+initial_path_to_mcc = r'C:\TS_data\experimental_data\mcc_data'
+initial_path_to_DTR_data = r'C:\TS_data\processed_shots'
+initial_path_ir_camera = r'C:\TS_data\IR_data\Result_Temperature'
 initial_eq_data = 'None'
 
 
@@ -21,7 +22,7 @@ class App(tk.Tk):
         super().__init__()
 
         self.title("My App")
-        self.geometry("1200x1000")
+        self.geometry("1500x900")
 
         tabs = ttk.Notebook(self)
 
@@ -117,23 +118,28 @@ class RawSignalsTab(ttk.Frame):
         timestamp_ind = self.shot_times.index(float(timestamp))
 
         raw_data_plot = []
-        phe_data_plot = []
+        phe_data = []
         for fiber in self.poly_data:
             if float(z_pos) == fiber.z_cm:
                 for ch in range(fiber.ch_number):
                     raw_data_plot.append(fiber.signals[ch][timestamp_ind + 1])
 
-                phe_data_plot = fiber.integralsPhe[timestamp_ind]#+1 из-за записи дорожки для привязки к комбископу
-        draw_raw_signals(z_pos, float(timestamp), raw_data_plot, self.axs, add_flag=add_flag)
-        draw_phe(z_pos, float(timestamp), phe_data_plot, self.axs[0][1], add_flag=add_flag)
+                phe_data = fiber.get_signal_integrals()[0][timestamp_ind]#+1 из-за записи дорожки для привязки к комбископу
 
-        self.canvas.draw()
+        draw_raw_signals(z_pos, float(timestamp), raw_data_plot, self.axs, add_flag=add_flag)
+        draw_phe(z_pos, float(timestamp), phe_data, self.axs[0][1], add_flag=add_flag)
+        draw_expected(self.poly_data[0].fe_data, self.axs[1][1])
+
+        self.canvas.draw_idle()
+
 
 
 class DTSPlotsTab(ttk.Frame):
+
     def __init__(self, parent):
         super().__init__(parent)
-        self.sht_data = {}
+        self.divertor_ts_data = {}
+        self.ir_camera_data = {}
 
         self.input_shot_frame = tk.Frame(self)
         self.input_shot_frame.pack(side="top", pady=5, anchor='nw')
@@ -162,7 +168,7 @@ class DTSPlotsTab(ttk.Frame):
         self.button_add_mcc = tk.Button(self.input_shot_frame, text="Add MCC", command=self.button_add_mcc_clicked)
         self.button_add_mcc.pack(side="left", padx=5)
 
-        self.fig, self.axs = plt.subplots(2, 3)
+        self.fig, self.axs = plt.subplots(2, 4)
         self.fig.subplots_adjust(left=0.07, bottom=0.05, right=0.95, top=0.96, wspace=0.2, hspace=0.15)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.get_tk_widget().pack(side="top", fill="both", expand=True, padx=1, pady=1)
@@ -171,21 +177,27 @@ class DTSPlotsTab(ttk.Frame):
         self.interactive.update()
         self.interactive.pack(side="left", padx=5)
 
+        pos = self.axs[1][3].get_position()
+        slider_pos = [pos.x1+0.02, pos.y0+0.02, 0.01, pos.height - 0.02]
+
+        self.ax_slider = plt.axes(slider_pos)
+        self.slider = Slider(self.ax_slider, 'Time, ms', 100, 220, orientation='vertical', valinit=100, valstep=1)
+        self.slider.on_changed(self.update_ir_graph)
+
         self.span_selectors = []
-        self.span_02_flag = True
         for i in range(3):
             span = SpanSelector(self.axs[0][i], lambda xmin, xmax, idx=i: self.onselect(xmin, xmax, idx),
                                 direction='horizontal', useblit=True, props=dict(alpha=0.5, facecolor='red'))
             self.span_selectors.append(span)
 
-    def update_graphs(self, data):
-        self.span_02_flag = True
 
-        ne = data['ne(t)']
-        ne_err = data['ne_err(t)']
+    def update_graphs(self, dtr_data):
 
-        Te = data['Te(t)']
-        Te_err = data['Te_err(t)']
+        ne = dtr_data['ne(t)']
+        ne_err = dtr_data['ne_err(t)']
+
+        Te = dtr_data['Te(t)']
+        Te_err = dtr_data['Te_err(t)']
 
         # trans
         Te_Z = np.array(Te).T
@@ -194,8 +206,8 @@ class DTSPlotsTab(ttk.Frame):
         Te_err_Z = np.array(Te_err).T
         ne_err_Z = np.array(ne_err).T
 
-        times = data['t']
-        coord = data['Z']
+        times = dtr_data['t']
+        coord = dtr_data['Z']
 
         for ax in self.axs.flat:
             ax.clear()
@@ -249,24 +261,33 @@ class DTSPlotsTab(ttk.Frame):
             ax.grid()
             ax.legend()
 
-        self.canvas.draw()
+        self.canvas.draw_idle()
 
     def button_update_clicked(self):
         shot_num = self.shot_num_entry.get()
-        self.sht_data = get_divertor_data(shot_num)
-        self.update_graphs(self.sht_data)
+        self.divertor_ts_data = get_divertor_data(shot_num)
+        try:
+            self.ir_camera_data = get_ir_data(shot_num)
+            draw_ir_camera(shot_num, self.ir_camera_data, self.axs[1][3])
+
+            self.update_graphs(self.divertor_ts_data)
+        except FileNotFoundError:
+            self.update_graphs(self.divertor_ts_data)
+            print(f'No such files')
+        except Exception as e:
+            self.update_graphs(self.divertor_ts_data)
+            print(f'SOME EXCEPTION IN BUTTON UPDATE {e}')
+
 
     def button_refresh_clicked(self):
-        self.span_02_flag = True
-        if self.sht_data != {}:
-            self.update_graphs(self.sht_data)
+        if self.divertor_ts_data != {}:
+            self.update_graphs(self.divertor_ts_data)
         else:
             self.button_update_clicked()
 
     def button_mcc_clicked(self):
         try:
-            self.span_02_flag = False
-            coord_divertor = self.sht_data['Z']
+            coord_divertor = self.divertor_ts_data['Z']
             time = float(self.mcc_entry.get())
             shot_num = int(self.shot_num_entry.get())
 
@@ -276,35 +297,33 @@ class DTSPlotsTab(ttk.Frame):
             path_to_mcc = f'{initial_path_to_mcc}/mcc_{shot_num}.json'
             sep_data = get_Xpoint(path_to_mcc, time)
 
-            draw_separatrix(sep_data, time, shot_num, coord_divertor, equator_radia, ax=self.axs[0][2])
-            self.axs[0][2].figure.canvas.draw()
+            draw_separatrix(sep_data, time, shot_num, coord_divertor, equator_radia, ax=self.axs[0][3])
+            self.axs[0][3].figure.canvas.draw()
 
         except Exception as e:
             print(f'Some error {e}')
 
     def button_add_mcc_clicked(self):
         try:
-            self.span_02_flag = False
             time = float(self.mcc_entry.get())
             shot_num = int(self.shot_num_entry.get())
 
             path_to_mcc = f'{initial_path_to_mcc}/mcc_{shot_num}.json'
             sep_data = get_Xpoint(path_to_mcc, time)
 
-            draw_separatrix(sep_data, time, shot_num, add_flag=True, ax=self.axs[0][2])
-            self.axs[0][2].figure.canvas.draw()
+            draw_separatrix(sep_data, time, shot_num, add_flag=True, ax=self.axs[0][3])
+            self.axs[0][3].figure.canvas.draw()
         except Exception as e:
             print(f'Some error {e}')
 
     def update_plot_data(self, xmin, xmax, y_max, parameter):
 
-        times = self.sht_data['t']
-        coord = self.sht_data['Z']
+        times = self.divertor_ts_data['t']
+        coord = self.divertor_ts_data['Z']
 
         if parameter == 'Te':
-            Te = self.sht_data['Te(t)']
-            Te_err = self.sht_data['Te_err(t)']
-
+            Te = self.divertor_ts_data['Te(t)']
+            Te_err = self.divertor_ts_data['Te_err(t)']
             Te_Z = np.array(Te).T
             Te_err_Z = np.array(Te_err).T
 
@@ -321,15 +340,13 @@ class DTSPlotsTab(ttk.Frame):
             self.axs[1][0].legend()
             self.axs[1][0].grid()
             self.axs[1][0].invert_xaxis()
-            self.axs[1][0].figure.canvas.draw()
+            self.axs[1][0].figure.canvas.draw_idle()
 
         elif parameter == 'ne':
-            ne = self.sht_data['ne(t)']
-            ne_err = self.sht_data['ne_err(t)']
-
+            ne = self.divertor_ts_data['ne(t)']
+            ne_err = self.divertor_ts_data['ne_err(t)']
             ne_Z = np.array(ne).T
             ne_err_Z = np.array(ne_err).T
-
             self.axs[1][1].clear()
 
             for n, n_er, time in zip(ne_Z, ne_err_Z, times):
@@ -337,21 +354,16 @@ class DTSPlotsTab(ttk.Frame):
                     self.axs[1][1].errorbar(coord, n, yerr=n_er, fmt='-o', markersize=3, label=str(time))
 
             self.axs[1][1].set_ylim(0, y_max)
-
             self.axs[1][1].set_ylabel('n(Z)')
             self.axs[1][1].set_xlabel('Z(cm)')
             self.axs[1][1].legend()
             self.axs[1][1].grid()
             self.axs[1][1].invert_xaxis()
-            self.axs[1][1].figure.canvas.draw()
+            self.axs[1][1].figure.canvas.draw_idle()
 
         elif parameter == 'pe':
-            if not self.span_02_flag:
-                return
-
-            ne = self.sht_data['ne(t)']
-            Te = self.sht_data['Te(t)']
-
+            ne = self.divertor_ts_data['ne(t)']
+            Te = self.divertor_ts_data['Te(t)']
             ne_Z = np.array(ne).T
             Te_Z = np.array(Te).T
 
@@ -368,35 +380,49 @@ class DTSPlotsTab(ttk.Frame):
             self.axs[1][2].legend()
             self.axs[1][2].grid()
             self.axs[1][2].invert_xaxis()
-            self.axs[1][2].figure.canvas.draw()
+            self.axs[1][2].figure.canvas.draw_idle()
 
     def onselect(self, xmin, xmax, idx):
         elems = self.axs[0][idx].get_children()
-
-        if idx == 2 and not self.span_02_flag:
-            return
-
         all_y = []
-        x_data = []
-        for element in elems:
-            if isinstance(element, mpl.lines.Line2D):
-                if len(x_data) == 0:
-                    x_data = element.get_xdata()
-                y_data = element.get_ydata()
-                all_y.append(list(y_data))
+        x_data = None
 
+        for element in elems:
+            if isinstance(element, plt.Line2D):
+                if x_data is None:
+                    x_data = element.get_xdata()
+                all_y.append(element.get_ydata())
+
+        all_y = np.array(all_y)
         all_x = np.array(x_data)
 
-        left_index = np.abs(all_x - xmin).argmin()
-        right_index = np.abs(all_x - xmax).argmin()
+        left_index = np.searchsorted(all_x, xmin, side='left')
+        right_index = np.searchsorted(all_x, xmax, side='right') - 1
 
-        y_value_max = max([max(y_coord[left_index:right_index + 1]) for y_coord in all_y])
+        y_values = all_y[:, left_index:right_index + 1]
+        y_value_max = np.max(y_values)
 
-        self.axs[0][idx].set_xlim(xmin, xmax)
-        self.axs[0][idx].set_ylim(0, y_value_max * 1.2)
-        self.axs[0][idx].figure.canvas.draw()
+        ax = self.axs[0][idx]
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(0, y_value_max * 1.2)
+
+        ax.figure.canvas.draw_idle()
 
         self.update_plot_data(xmin, xmax, y_value_max * 1.2, 'Te' if idx == 0 else 'ne' if idx == 1 else 'pe')
+
+    def update_ir_graph(self, val):
+
+        self.axs[1][3].clear()
+
+        ir_data = self.ir_camera_data
+        time = self.slider.val
+        ir_camera_time_ind = bisect.bisect_left(ir_data['times_ms'], time)
+        ir_camera_time = ir_data['times_ms'][ir_camera_time_ind]
+
+        self.axs[1][3].plot(ir_data['radii'], ir_data[ir_camera_time])
+
+        self.axs[1][3].set_ylim(min(ir_data[ir_camera_time]) * 0.9, max(ir_data[ir_camera_time]) * 1.1)
+        self.axs[1][3].figure.canvas.draw_idle()
 
 
 if __name__ == '__main__':

@@ -113,9 +113,12 @@ def phe_to_laser(poly: Polychromator, laser_ophir: list):
 
 def calculate_calibration_coef(fibers: list[Polychromator], ophir_data_path: str, ophir_shot_name, p_torr: float,
                                gas_temperature: float):
+
+
     avalanche_Path = r'C:\Users\NE\PycharmProjects\DDTS\calibrations\calibration_datasheets\aw_hama.csv'
 
-    filter_Path = r'C:\Users\NE\PycharmProjects\DDTS\calibrations\calibration_datasheets\filters_equator.csv'
+
+
 
     k_bolt = 1.38E-23  # J/K
     gas_temperature = gas_temperature + 273.15  # K
@@ -129,7 +132,7 @@ def calculate_calibration_coef(fibers: list[Polychromator], ophir_data_path: str
     photon_energy = h_plank * c_speed / laser_wl
 
     avalanche_wl, avalanche_phe = get_avalanche_data_phe(avalanche_Path)
-    filters_wl, filters_transm = get_filters_data(filter_Path, filters_transposed=True)
+
     raman_wl, raman_section = get_raman_wl_section(gas_temperature=gas_temperature, las_wl=1064.4E-9)
 
     laser_ophir_data = get_ophir_data(ophir_data_path, ophir_shot_name)
@@ -138,6 +141,12 @@ def calculate_calibration_coef(fibers: list[Polychromator], ophir_data_path: str
     for fiber in fibers:
         calib_phe_to_laser = phe_to_laser(fiber, laser_ophir_data)
 
+        if 'T5' in fiber.poly_name:
+            filter_Path = r'C:\Users\NE\PycharmProjects\DDTS\calibrations\calibration_datasheets\t15_filters_model.csv'
+        else:
+            filter_Path = r'C:\Users\NE\PycharmProjects\DDTS\calibrations\calibration_datasheets\filters_equator.csv'
+
+        filters_wl, filters_transm = get_filters_data(filter_Path, filters_transposed=True)
         integral = 0
         for ram_wl, ram_sec in zip(raman_wl, raman_section):
             filter = linear_interpolation(ram_wl, filters_wl,  filters_transm[0])
