@@ -134,15 +134,15 @@ class Polychromator:
                 khi = 0
                 if index >= 2:
                     sum_1 = 0
-                    for ch in range(self.ch_number):
-                        sum_1 += shot_integral[ch] * (f_e[ch] * self.spectral_calibration[ch]) / noise[ch] ** 2
-
                     sum_2 = 0
                     for ch in range(self.ch_number):
+                        sum_1 += shot_integral[ch] * (f_e[ch] * self.spectral_calibration[ch]) / noise[ch] ** 2
                         sum_2 += (f_e[ch] * self.spectral_calibration[ch]) ** 2 / noise[ch] ** 2
 
+
                     for ch in range(self.ch_number):
-                        khi += (shot_integral[ch] - sum_1 * (f_e[ch] * self.spectral_calibration[ch]) / sum_2) ** 2 / noise[ch] ** 2
+                        khi += (shot_integral[ch] - sum_1 *
+                                (f_e[ch] * self.spectral_calibration[ch]) / sum_2) ** 2 / noise[ch] ** 2
                     ans.append({T_e: khi})
 
             results.append(ans)

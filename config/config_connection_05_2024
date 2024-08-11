@@ -373,8 +373,8 @@
 		  "poly": "T15_34_G10",
 		  "poly_sp_ch": 4,
 		  "dtr_fiber": 7,
-		  "sig_LeftBord": 4,
-		  "sig_RightBord": 5,
+		  "sig_LeftBord": 27,
+		  "sig_RightBord": 39,
 		  "pest_LeftBord": 0,
 		  "pest_RightBord": 0
 		},
@@ -703,8 +703,8 @@
 		  "poly": "T15_35_G10",
 		  "poly_sp_ch": 4,
 		  "dtr_fiber": 8,
-		  "sig_LeftBord": 4,
-		  "sig_RightBord": 5,
+		  "sig_LeftBord": 29,
+		  "sig_RightBord": 40,
 		  "pest_LeftBord": 0,
 		  "pest_RightBord": 0
 		},
@@ -713,8 +713,8 @@
 		  "poly": "T15_35_G10",
 		  "poly_sp_ch": 5,
 		  "dtr_fiber": 8,
-		  "sig_LeftBord": 4,
-		  "sig_RightBord": 5,
+		  "sig_LeftBord": 32,
+		  "sig_RightBord": 43,
 		  "pest_LeftBord": 0,
 		  "pest_RightBord": 0
 		}

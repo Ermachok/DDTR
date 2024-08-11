@@ -8,13 +8,14 @@ from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.widgets import SpanSelector, Slider
 
-from gui.utils_gui import get_Xpoint, get_divertor_data, download_poly_data, get_ir_data
-from gui.plots import draw_separatrix, draw_raw_signals, draw_phe, draw_ir_camera, draw_expected
+from gui.utils_gui import get_Xpoint, get_divertor_data, download_poly_data, get_ir_data, get_equator_data
+from gui.plots import (draw_separatrix, draw_raw_signals, draw_phe, draw_ir_camera, draw_expected,
+                       draw_distance_from_separatrix)
 
 initial_path_to_mcc = r'C:\TS_data\experimental_data\mcc_data'
 initial_path_to_DTR_data = r'C:\TS_data\processed_shots'
+initial_path_to_EQUATORTS_data = r'C:\TS_data\equator_TS_data'
 initial_path_ir_camera = r'C:\TS_data\IR_data\Result_Temperature'
-initial_eq_data = 'None'
 
 
 class App(tk.Tk):
@@ -122,16 +123,16 @@ class RawSignalsTab(ttk.Frame):
         for fiber in self.poly_data:
             if float(z_pos) == fiber.z_cm:
                 for ch in range(fiber.ch_number):
-                    raw_data_plot.append(fiber.signals[ch][timestamp_ind + 1])
+                    raw_data_plot.append(fiber.signals[ch][timestamp_ind + 1]) #+1 из-за записи дорожки для привязки к комбископу
 
-                phe_data = fiber.get_signal_integrals()[0][timestamp_ind]#+1 из-за записи дорожки для привязки к комбископу
+                phe_data = fiber.get_signal_integrals()[0][timestamp_ind]
+                fe_data = fiber.fe_data
 
         draw_raw_signals(z_pos, float(timestamp), raw_data_plot, self.axs, add_flag=add_flag)
         draw_phe(z_pos, float(timestamp), phe_data, self.axs[0][1], add_flag=add_flag)
-        draw_expected(self.poly_data[0].fe_data, self.axs[1][1])
+        draw_expected(fe_data, self.axs[1][1], phe_data, float(timestamp), add_flag=add_flag)
 
         self.canvas.draw_idle()
-
 
 
 class DTSPlotsTab(ttk.Frame):
@@ -139,6 +140,7 @@ class DTSPlotsTab(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.divertor_ts_data = {}
+        self.equator_ts_data = {}
         self.ir_camera_data = {}
 
         self.input_shot_frame = tk.Frame(self)
@@ -167,6 +169,10 @@ class DTSPlotsTab(ttk.Frame):
 
         self.button_add_mcc = tk.Button(self.input_shot_frame, text="Add MCC", command=self.button_add_mcc_clicked)
         self.button_add_mcc.pack(side="left", padx=5)
+
+        self.button_distance_separatrix = tk.Button(self.input_shot_frame, text='Distance to separatrix',
+                                                    command=self.button_distance_from_separatrix)
+        self.button_distance_separatrix.pack(side="left", padx=5)
 
         self.fig, self.axs = plt.subplots(2, 4)
         self.fig.subplots_adjust(left=0.07, bottom=0.05, right=0.95, top=0.96, wspace=0.2, hspace=0.15)
@@ -266,6 +272,8 @@ class DTSPlotsTab(ttk.Frame):
     def button_update_clicked(self):
         shot_num = self.shot_num_entry.get()
         self.divertor_ts_data = get_divertor_data(shot_num)
+        self.equator_ts_data = get_equator_data(shot_num)
+
         try:
             self.ir_camera_data = get_ir_data(shot_num)
             draw_ir_camera(shot_num, self.ir_camera_data, self.axs[1][3])
@@ -273,11 +281,12 @@ class DTSPlotsTab(ttk.Frame):
             self.update_graphs(self.divertor_ts_data)
         except FileNotFoundError:
             self.update_graphs(self.divertor_ts_data)
+            self.axs[1][3].clear()
+            self.ir_camera_data = {}
             print(f'No such files')
         except Exception as e:
             self.update_graphs(self.divertor_ts_data)
             print(f'SOME EXCEPTION IN BUTTON UPDATE {e}')
-
 
     def button_refresh_clicked(self):
         if self.divertor_ts_data != {}:
@@ -315,6 +324,15 @@ class DTSPlotsTab(ttk.Frame):
             self.axs[0][3].figure.canvas.draw()
         except Exception as e:
             print(f'Some error {e}')
+
+    def button_distance_from_separatrix(self):
+        time = float(self.mcc_entry.get())
+        shot_num = int(self.shot_num_entry.get())
+
+        path_to_mcc = f'{initial_path_to_mcc}/mcc_{shot_num}.json'
+        sep_data = get_Xpoint(path_to_mcc, time)
+
+        draw_distance_from_separatrix(self.divertor_ts_data, self.equator_ts_data, sep_data, time)
 
     def update_plot_data(self, xmin, xmax, y_max, parameter):
 

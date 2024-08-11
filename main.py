@@ -24,5 +24,6 @@ def main(discharge_num):
 
 
 if __name__ == '__main__':
-    discharge = '44581'
+    discharge = '44629'
+    #discharges = ['44582', '44612', '44613', '44637', '44641', '44642', '44643', '44644', '44648', '44649']
     main(discharge)

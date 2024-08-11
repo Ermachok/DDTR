@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import numpy as np
+from shapely.geometry import Point,Polygon
 
 from utils.path_parser import read_config
 from utils.POLY_v2 import built_fibers, calculate_Te_ne
@@ -12,6 +13,7 @@ from utils.diagnostic_utils import LaserNdYag
 initial_path_to_mcc = r'C:\TS_data\experimental_data\mcc_data'
 initial_path_to_DTR_data = r'C:\TS_data\processed_shots'
 initial_path_ir_camera = r'C:\TS_data\IR_data\Result_Temperature'
+initial_path_to_EQUATORTS_data = r'C:\TS_data\equator_TS_data'
 
 
 def find_nearest(array, value):
@@ -54,52 +56,56 @@ def get_Xpoint(path: str, timestamp_base: float) -> dict:
 
 
 def get_divertor_data(shot_number):
-
     path = fr'{initial_path_to_DTR_data}\%d' % int(shot_number)
-    files = os.listdir(path)
-    coordinate = []
+    try:
+        files = os.listdir(path)
+        coordinate = []
 
-    for file_name in files:
-        if 'ne' in file_name:
-            ne_all = []
-            ne_err_all = []
-            with open(path + fr'\{file_name}') as ne_file:
-                ne_file_data = ne_file.readlines()
+        for file_name in files:
+            if 'ne' in file_name:
+                ne_all = []
+                ne_err_all = []
+                with open(path + fr'\{file_name}') as ne_file:
+                    ne_file_data = ne_file.readlines()
 
-            for ind, line in enumerate(ne_file_data):
-                ne = []
-                ne_err = []
-                if ind == 0:
-                    times = [float(t) for t in line.split(',')[1::2]]
-                if ind > 0:
-                    line_data_list = line.split(', ')
-                    coordinate.append(line_data_list[0])
-                    ne = [float(n) for n in line_data_list[1::2]]
-                    ne_err = [float(n_err) for n_err in line_data_list[2::2]]
+                for ind, line in enumerate(ne_file_data):
+                    ne = []
+                    ne_err = []
+                    if ind == 0:
+                        times = [float(t) for t in line.split(',')[1::2]]
+                    if ind > 0:
+                        line_data_list = line.split(', ')
+                        coordinate.append(line_data_list[0])
+                        ne = [float(n) for n in line_data_list[1::2]]
+                        ne_err = [float(n_err) for n_err in line_data_list[2::2]]
 
-                    ne_all.append(ne)
-                    ne_err_all.append(ne_err)
+                        ne_all.append(ne)
+                        ne_err_all.append(ne_err)
 
-        elif 'Te' in file_name:
-            Te_all = []
-            Te_err_all = []
-            with open(path + fr'\{file_name}') as te_file:
-                te_file_data = te_file.readlines()
+            elif 'Te' in file_name:
+                Te_all = []
+                Te_err_all = []
+                with open(path + fr'\{file_name}') as te_file:
+                    te_file_data = te_file.readlines()
 
-            for ind, line in enumerate(te_file_data):
-                te = []
-                te_err = []
-                if ind > 0:
-                    line_data_list = line.split(', ')
-                    te = [float(t) for t in line_data_list[1::2]]
-                    te_err = [float(t_err) for t_err in line_data_list[2::2]]
+                for ind, line in enumerate(te_file_data):
+                    te = []
+                    te_err = []
+                    if ind > 0:
+                        line_data_list = line.split(', ')
+                        te = [float(t) for t in line_data_list[1::2]]
+                        te_err = [float(t_err) for t_err in line_data_list[2::2]]
 
-                    Te_all.append(te)
-                    Te_err_all.append(te_err)
+                        Te_all.append(te)
+                        Te_err_all.append(te_err)
 
-    return {'discharge': shot_number, 't': times, 'Z': coordinate,
-            'ne(t)': ne_all, 'ne_err(t)': ne_err_all,
-            'Te(t)': Te_all, 'Te_err(t)': Te_err_all}
+        return {'discharge': shot_number, 't': times, 'Z': coordinate,
+                'ne(t)': ne_all, 'ne_err(t)': ne_err_all,
+                'Te(t)': Te_all, 'Te_err(t)': Te_err_all}
+
+    except Exception as e:
+        print(f'Some exception in getting DTS data {e}')
+        return None
 
 
 def get_ir_data(shot_num):
@@ -130,22 +136,67 @@ def get_ir_data(shot_num):
     return result
 
 
-def get_equator_data(path):
-    initial_eq_data = None
-    path = fr'{initial_eq_data}\%d' % int(path)
-    files = os.listdir(path)
-    coordinate = []
+def get_equator_data(sht_num):
+    initial_eq_data = initial_path_to_EQUATORTS_data
+    full_path = fr'{initial_eq_data}\{int(sht_num)}'
+    try:
+        files = os.listdir(full_path)
+        coordinates = []
+        times = []
+        ne_data = {}
+        te_data = {}
 
-    for file in files:
-        if 'n(R)' in file:
-            with open(path + fr'\{file}') as ne_file:
-                ne_file_data = ne_file.readlines()
+        for file in files:
+            if file == f'{int(sht_num)}_n(t).csv':
+                with open(fr'{full_path}\{file}') as ne_file:
+                    ne_file_data = ne_file.readlines()
 
-            for ind, line in enumerate(ne_file_data):
-                if ind > 1:
-                    line_data_list = line.split(', ')
-                    coordinate.append(float(line_data_list[0]) / 1000)
-            return {'R': coordinate}
+                for ind, line in enumerate(ne_file_data):
+                    if ind == 0:
+                        coordinates = [float(t)/1000 for t in line.split(', ')[1::2]]
+                    if ind > 1:
+                        line_data_list = line.split(', ')
+                        time = float(line_data_list[0])
+                        times.append(time)
+
+                        temp_ne = []
+                        for ne in line_data_list[1::2]:
+                            try:
+                                temp_ne.append(float(ne))
+                            except ValueError:
+                                temp_ne.append(0)
+
+                        ne_data[time] = temp_ne
+
+            elif file == f'{int(sht_num)}_T(t).csv':
+                with open(fr'{full_path}\{file}') as ne_file:
+                    ne_file_data = ne_file.readlines()
+
+                for ind, line in enumerate(ne_file_data):
+                    if ind > 1:
+                        line_data_list = line.split(', ')
+                        time = float(line_data_list[0])
+                        line_data_list = line.split(', ')
+                        temp_te = []
+                        for ne in line_data_list[1::2]:
+                            try:
+                                temp_te.append(float(ne))
+                            except ValueError:
+                                temp_te.append(0)
+
+                        te_data[time] = temp_te
+
+        return {'R_m': coordinates,
+                'Z': 0,
+                'times': times,
+                'ne': ne_data,
+                'Te': te_data
+                }
+
+
+    except Exception as e:
+        print(f'Some exception {e}')
+        return None
 
 
 def download_poly_data(discharge_num):
@@ -160,3 +211,28 @@ def download_poly_data(discharge_num):
     laser_shots_times = combiscope_times
 
     return laser_shots_times, fibers
+
+
+def find_minimal_distance_to_separatrix(points: list[set], mcc_data: dict):
+    R_sep = mcc_data['body']['R']
+    Z_sep = mcc_data['body']['Z']
+
+    if (R_sep[0], Z_sep[0]) != (R_sep[-1], Z_sep[-1]):
+        R_sep.append(R_sep[0])
+        Z_sep.append(Z_sep[0])
+
+    polygon_coords = list(zip(R_sep,Z_sep))
+    polygon = Polygon(polygon_coords)
+
+    all_distances = []
+    for point in points:
+        point_object = Point(point)
+
+        if polygon.contains(point_object):
+            min_distance = -point_object.distance(polygon.exterior)
+        else:
+            min_distance = point_object.distance(polygon)
+
+        all_distances.append(min_distance * 100)    # meters to cm
+
+    return all_distances
