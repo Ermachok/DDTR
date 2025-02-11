@@ -1,4 +1,4 @@
-name: Python application
+name: DDTR
 on:
   push:
     branches: [ "master" ]
