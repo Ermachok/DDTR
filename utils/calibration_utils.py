@@ -117,9 +117,6 @@ def calculate_calibration_coef(fibers: list[Polychromator], ophir_data_path: str
 
     avalanche_Path = r'C:\Users\NE\PycharmProjects\DDTS\calibrations\calibration_datasheets\aw_hama.csv'
 
-
-
-
     k_bolt = 1.38E-23  # J/K
     gas_temperature = gas_temperature + 273.15  # K
     p_pascal = p_torr * 133.3  # pascal

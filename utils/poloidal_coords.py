@@ -199,21 +199,36 @@ def prepare_data_for_poloidal_plot(ts_data: dict, equilibrium: dict) -> tuple:
 
     ts_te_err = [point['Te_err'] for point in ts_data]
     ts_ne_err = [point['ne_err'] for point in ts_data]
+    #ts_nt_err = [(te_err/te + ne_err/ne) * ne*te for te_err, te, ne_err, ne in zip(ts_te_err, ts_te,
+    #                                                                               ts_te_err, ts_ne,)]
 
+    ts_nt_err = []
+    for te_err, te, ne_err, ne in zip(ts_te_err, ts_te, ts_te_err, ts_ne):
+        if te == 0 or ne == 0:
+            ts_nt_err.append(0)
+        else:
+            ts_nt_err.append((te_err / te + ne_err / ne) * ne * te)
 
     psi_ts = []
     for point in ts_data:
         z_idx = find_nearest(equilibrium['z_m'], point['z_m'], out_index=True)
         r_idx = find_nearest(equilibrium['r_m'], point['r_m'], out_index=True)
-        psi_ts.append(float(equilibrium['psi'][r_idx][z_idx]))
+        psi_ts.append(float(equilibrium['psi'][r_idx][z_idx])**0.5)
 
-    return psi_ts, ts_ne, ts_te, ts_nt, ts_ne_err, ts_te_err
+        if point['z_m'] == 0:
+            print(point['z_m'], point['r_m'])
+            r_idx_1 = find_nearest(equilibrium['r_m'], point['r_m'] + 0.005, out_index=True)
+            r_idx_2 = find_nearest(equilibrium['r_m'], point['r_m'] - 0.005, out_index=True)
+
+            print(float(equilibrium['psi'][r_idx_1][z_idx])**0.5, float(equilibrium['psi'][r_idx_2][z_idx])**0.5)
+
+    return psi_ts, ts_ne, ts_te, ts_nt, ts_ne_err, ts_te_err, ts_nt_err
 
 
 def plot_data_from_psi(ets_data: list, dts_data: list, equilibrium_data: dict):
 
-    psi_ets, ets_ne, ets_te, ets_nt, ets_ne_err, ets_te_err = prepare_data_for_poloidal_plot(ets_data, equilibrium_data)
-    psi_dts, dts_ne, dts_te, dts_nt, dts_ne_err, dts_te_err = prepare_data_for_poloidal_plot(dts_data, equilibrium_data)
+    psi_ets, ets_ne, ets_te, ets_nt, ets_ne_err, ets_te_err, ets_nt_err = prepare_data_for_poloidal_plot(ets_data, equilibrium_data)
+    psi_dts, dts_ne, dts_te, dts_nt, dts_ne_err, dts_te_err, dts_nt_err = prepare_data_for_poloidal_plot(dts_data, equilibrium_data)
 
     psi_dts_sorted = sorted(psi_dts)
     for i, value in enumerate(psi_dts_sorted):
@@ -232,8 +247,8 @@ def plot_data_from_psi(ets_data: list, dts_data: list, equilibrium_data: dict):
     axs[1].errorbar(psi_ets, ets_te, yerr=ets_te_err, fmt='o-', markersize=3, label=f'Te, ETS {time}')
     axs[1].errorbar(psi_dts_sorted, dts_te, yerr=dts_te_err, fmt='o', markersize=3, label=f'Te, DTS {time}')
 
-    axs[2].plot(psi_ets, ets_nt, 'o-', label=f'ne*Te, ETS {time}')
-    axs[2].plot(psi_dts_sorted, dts_nt, 'o-', label=f'ne*Te, DTS {time}')
+    axs[2].errorbar(psi_ets, ets_nt, yerr=ets_nt_err, fmt='o-', markersize=3, label=f'ne*Te, ETS {time}')
+    axs[2].errorbar(psi_dts_sorted, dts_nt, yerr=dts_nt_err, fmt='o', markersize=3,  label=f'ne*Te, DTS {time}')
 
     axs[0].set_ylabel('ne')
     axs[1].set_ylabel('Te')
@@ -242,21 +257,22 @@ def plot_data_from_psi(ets_data: list, dts_data: list, equilibrium_data: dict):
 
     for ax in axs.flat:
         ax.grid()
-        ax.legend()
+        #ax.legend()
 
     #plt.show()
 
 
 if __name__ == '__main__':
-    sht_num = 44649
+    sht_num = 44644
 
     dts_data = get_divertor_data(sht_num)
     equator_data = get_equator_data(sht_num)
 
+
     fig, axs = plt.subplots(1, 3)
 
-    #for time in [170.6, 190.6, 200.6, ]:
-    for time in [150.6]:
+    #for time in [190.6, 180.6, 170.6]:
+    for time in [194.6, ]:
         time_to_plot = time
         dts_time_idx, nearest_dts_shot = find_nearest(dts_data['times_ms'], time_to_plot,
                                                       out_value=True,

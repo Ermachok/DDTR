@@ -154,8 +154,8 @@ def draw_distance_from_separatrix(dts_data: dict, equator_data: dict, mcc_data: 
 
     axs[1].plot(equator_distances, te_equator, 'o-', label=f'eqTS, {nearest_equator_time}')
     axs[1].plot(dts_distances, te_dts, 'o-', label=f'DTS, {dts_data['t'][index_dts_time]}')
-    axs[1].set_xlim(min(dts_distances) * 1.2 if min(dts_distances) < 0 else min(dts_distances) / 1.1,
-                    max(dts_distances) * 1.5)
+    # axs[1].set_xlim(min(dts_distances) * 1.2 if min(dts_distances) < 0 else min(dts_distances) / 1.1,
+    #                 max(dts_distances) * 1.5)
     #axs[1].set_ylim(0, max(te_dts) * 2)
     axs[1].set_ylabel('Te')
     axs[1].set_xlabel('Distance to separatrix, cm')
@@ -164,8 +164,9 @@ def draw_distance_from_separatrix(dts_data: dict, equator_data: dict, mcc_data: 
 
     axs[2].plot(equator_distances, [te*ne for te, ne in zip(te_equator, ne_equator)] , 'o-')
     axs[2].plot(dts_distances, [te*ne for te, ne in zip(te_dts, ne_dts)], 'o-')
-    axs[2].set_xlim(min(dts_distances) * 1.2 if min(dts_distances) < 0 else min(dts_distances) / 1.1,
-                    max(dts_distances) * 1.2)
+    axs[2].grid()
+    # axs[2].set_xlim(min(dts_distances) * 1.2 if min(dts_distances) < 0 else min(dts_distances) / 1.1,
+    #                 max(dts_distances) * 1.2)
     #axs[2].set_ylim(0, max([te*ne for te, ne in zip(te_dts, ne_dts)]) * 2)
 
     fig.show()

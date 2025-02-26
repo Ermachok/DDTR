@@ -15,15 +15,21 @@ def main(discharge_num):
     laser = LaserNdYag(laser_wl=1064.4E-9, laser_energy=1.5)
     laser_shots_times, fibers = built_fibers(discharge_num, config, laser=laser)
 
-    calculate_Te_ne(fibers)
+    #calculate_Te_ne(fibers)
 
-    # for fiber in fibers:
-    #     fiber.plot_raw_signals(from_shot=0, to_shot=10)
+    for fiber in fibers[:2]:
+        print(fiber.gain.resulting_multiplier, fiber.poly_name)
+        #fiber.plot_raw_signals(from_shot=0, to_shot=20)
 
-    write_results(discharge_num, config['save_data_path'], laser_shots_times, fibers)
+    #write_results(discharge_num, config['save_data_path'], laser_shots_times, fibers)
 
 
 if __name__ == '__main__':
-    discharge = '44629'
-    #discharges = ['44582', '44612', '44613', '44637', '44641', '44642', '44643', '44644', '44648', '44649']
-    main(discharge)
+    discharges = ['44639', '44626', '44640', '44627', '44629', '44630', '44631', '44632', '44633', '44634']
+    #discharges = ['44515', '44579']
+    discharges = [44644]
+    try:
+        for discharge in discharges:
+            main(discharge)
+    except Exception:
+        pass

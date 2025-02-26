@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import bisect
 
-
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.widgets import SpanSelector, Slider
@@ -123,7 +122,8 @@ class RawSignalsTab(ttk.Frame):
         for fiber in self.poly_data:
             if float(z_pos) == fiber.z_cm:
                 for ch in range(fiber.ch_number):
-                    raw_data_plot.append(fiber.signals[ch][timestamp_ind + 1]) #+1 из-за записи дорожки для привязки к комбископу
+                    raw_data_plot.append(
+                        fiber.signals[ch][timestamp_ind + 1])  # +1 из-за записи дорожки для привязки к комбископу
 
                 phe_data = fiber.get_signal_integrals()[0][timestamp_ind]
                 fe_data = fiber.fe_data
@@ -184,7 +184,7 @@ class DTSPlotsTab(ttk.Frame):
         self.interactive.pack(side="left", padx=5)
 
         pos = self.axs[1][3].get_position()
-        slider_pos = [pos.x1+0.02, pos.y0+0.02, 0.01, pos.height - 0.02]
+        slider_pos = [pos.x1 + 0.02, pos.y0 + 0.02, 0.01, pos.height - 0.02]
 
         self.ax_slider = plt.axes(slider_pos)
         self.slider = Slider(self.ax_slider, 'Time, ms', 100, 220, orientation='vertical', valinit=100, valstep=1)
@@ -195,7 +195,6 @@ class DTSPlotsTab(ttk.Frame):
             span = SpanSelector(self.axs[0][i], lambda xmin, xmax, idx=i: self.onselect(xmin, xmax, idx),
                                 direction='horizontal', useblit=True, props=dict(alpha=0.5, facecolor='red'))
             self.span_selectors.append(span)
-
 
     def update_graphs(self, dtr_data):
 
@@ -236,7 +235,6 @@ class DTSPlotsTab(ttk.Frame):
 
         for T, n, time in zip(Te_Z, ne_Z, times):
             self.axs[1][2].plot(coord, [Te * ne for Te, ne in zip(T, n)], '-o', markersize=3, label=str(time))
-
 
         self.axs[0][0].set_ylabel('Te(t)')
         self.axs[0][0].set_ylim(0, 1000)
@@ -304,9 +302,23 @@ class DTSPlotsTab(ttk.Frame):
             equator_radia = [0.6, 0.59, 0.57, 0.55, 0.52, 0.41]
 
             path_to_mcc = f'{initial_path_to_mcc}/mcc_{shot_num}.json'
-            sep_data = get_Xpoint(path_to_mcc, time)
+            sep_data: dict = get_Xpoint(path_to_mcc, time)
 
             draw_separatrix(sep_data, time, shot_num, coord_divertor, equator_radia, ax=self.axs[0][3])
+
+            # print('R_body, Z_body, R_leg1, Z_leg1, R_leg2 Z_leg2')
+            # for i in range(len(sep_data['body']['R'])):
+            #     print(sep_data['body']['R'][i], sep_data['body']['Z'][i], end=' ')
+            #     if i < len(sep_data['leg_1']['R']):
+            #         print(sep_data['leg_1']['R'][i], sep_data['leg_1']['Z'][i], end=' ')
+            #     else:
+            #         print('- -', end=' ')
+            #     if i < len(sep_data['leg_2']['R']):
+            #         print(sep_data['leg_2']['R'][i], sep_data['leg_2']['Z'][i], end=' ')
+            #     else:
+            #         print('- -', end=' ')
+            #     print()
+
             self.axs[0][3].figure.canvas.draw()
 
         except Exception as e:
@@ -439,7 +451,7 @@ class DTSPlotsTab(ttk.Frame):
 
         self.axs[1][3].plot(ir_data['radii'], ir_data[ir_camera_time])
 
-        self.axs[1][3].set_ylim(min(ir_data[ir_camera_time]) * 0.9, max(ir_data[ir_camera_time]) * 1.1)
+        self.axs[1][3].set_ylim(0, 140)
         self.axs[1][3].figure.canvas.draw_idle()
 
 

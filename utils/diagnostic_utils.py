@@ -80,3 +80,10 @@ class LaserNdYag:
     def __init__(self, laser_wl: float, laser_energy: float):
         self.laser_wl = laser_wl
         self.laser_energy = laser_energy
+
+
+if __name__ == '__main__':
+    t34 = Gains_T15_34()
+    t35 = Gains_T15_35()
+
+    print()

@@ -347,7 +347,7 @@ def built_fibers(discharge_num: str, config: dict,
 
     if calibration_flag:
         experiment_data = handle_all_caens(discharge_num=discharge_num, path=config['path_calib_data'],
-                                           processed_shots=30)
+                                           processed_shots='all')
     else:
         experiment_data = handle_all_caens(discharge_num=discharge_num, path=config['path_experimental_data'],
                                            processed_shots=30)
@@ -441,3 +441,10 @@ def calculate_Te_ne(fibers: Polychromator | list[Polychromator]):
         fiber.get_temperatures()
         fiber.get_density()
         fiber.get_errors()
+
+
+if __name__ == "__main__":
+    t15_34_Gain = Gains_T15_34()
+    t15_35_Gain = Gains_T15_35()
+
+    print(t15_35_Gain.R_gain, t15_34_Gain.R_gain)
