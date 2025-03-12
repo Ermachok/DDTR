@@ -281,7 +281,7 @@ class DTSPlotsTab(ttk.Frame):
             self.update_graphs(self.divertor_ts_data)
             self.axs[1][3].clear()
             self.ir_camera_data = {}
-            print(f'No such files')
+            print(f'No such files for IR camera')
         except Exception as e:
             self.update_graphs(self.divertor_ts_data)
             print(f'SOME EXCEPTION IN BUTTON UPDATE {e}')
