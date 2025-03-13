@@ -248,7 +248,7 @@ def data_on_separatrix(dts_data: dict, equator_data: dict, mcc_data: dict, times
     te_equator = equator_data['Te'][nearest_equator_time]
 
     ne_equator_err = equator_data['ne_err'][nearest_equator_time]
-    Te_equator_err = equator_data['Te_err'][nearest_equator_time]
+    te_equator_err = equator_data['Te_err'][nearest_equator_time]
 
     equator_points = [(R, 0) for R in equator_data['R_m']]
     equator_distances = find_minimal_distance_to_separatrix(equator_points, mcc_data)
@@ -272,9 +272,12 @@ def data_on_separatrix(dts_data: dict, equator_data: dict, mcc_data: dict, times
     dts_points = [(0.24, float(Z) / 100) for Z in dts_data['Z']]  # 0.24 R=24 cm diagnostic DTS laser path
     dts_distances = find_minimal_distance_to_separatrix(dts_points, mcc_data)
 
-    # print(timestamp, max(ne_dts), piecewise_linear_interpolate(equator_distances, ne_equator, 0))
-    # print(te_dts[ne_dts.index(max(ne_dts))], piecewise_linear_interpolate(equator_distances, te_equator, 0))
-    print(te_dts[ne_dts.index(max(ne_dts))], max(te_equator))
+
+    te_on_sep = piecewise_linear_interpolate(equator_distances, te_equator, 0)
+
+    print(f"{timestamp} {te_dts[ne_dts.index(max(ne_dts))]} {te_dts_err[ne_dts.index(max(ne_dts))]} "
+          f"{te_on_sep} {te_equator_err[find_nearest(te_equator, te_on_sep)]} "
+          f"{max(te_equator)} {te_equator_err[te_equator.index(max(te_equator))]}")
 
 
 def find_minimal_distance_to_separatrix(points: list[set], mcc_data: dict):
@@ -303,14 +306,14 @@ def find_minimal_distance_to_separatrix(points: list[set], mcc_data: dict):
 
 
 if __name__ == '__main__':
-    sht_nums = [44612, 44613, 44637, 44642, 44643, 44644, 44648, 44649, 44639, 44640, 44626, 44627, 44630,
+    sht_nums = [44612, 44613, 44642, 44643, 44644, 44648, 44649, 44639, 44640, 44626, 44627, 44630,
                 44631, 44632, 44633, 44634]
     timestamps = [170.6, 180.6, 190.6, 200.6, 210.6]
 
     for sht_num in sht_nums:
-        # print(sht_num, '\n')
-        path_to_mcc = f'{initial_path_to_mcc}/mcc_{sht_num}.json'
+        print('\n', f"{sht_num}, Te_dts, Te_dts_err, Te_sep, Te_err_sep, Te_max, Te_err_max", '\n')
 
+        path_to_mcc = f'{initial_path_to_mcc}/mcc_{sht_num}.json'
         dts_data = get_divertor_data(shot_number=sht_num)
         equator_data = get_equator_data(shot_number=sht_num)
 

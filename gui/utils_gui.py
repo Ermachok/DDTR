@@ -136,7 +136,7 @@ def get_ir_data(shot_num):
     return result
 
 
-def get_equator_data(sht_num):
+def get_equator_data_origin(sht_num):
     initial_eq_data = initial_path_to_EQUATORTS_data
     full_path = fr'{initial_eq_data}\{int(sht_num)}'
     try:
@@ -196,6 +196,67 @@ def get_equator_data(sht_num):
 
     except Exception as e:
         print(f'Some exception {e}')
+        return None
+
+
+def get_equator_data(shot_number: int | str) -> dict:
+    """
+    Retrieve equator data for a given shot number.
+
+    Args:
+        shot_number (Union[int, str]): The shot number.
+
+    Returns:
+        Optional[Dict]: A dictionary containing the equator data, or None if an error occurs.
+    """
+    full_path = os.path.join(initial_path_to_EQUATORTS_data, str(shot_number))
+    try:
+        files = os.listdir(full_path)
+        coordinates = []
+        times = []
+        ne_data = {}
+        te_data = {}
+        ne_err_data = {}
+        te_err_data = {}
+
+        for file in files:
+            if file == f'{shot_number}_n(t).csv':
+                with open(os.path.join(full_path, file)) as ne_file:
+                    ne_file_data = ne_file.readlines()
+
+                for ind, line in enumerate(ne_file_data):
+                    if ind == 0:
+                        coordinates = [float(t) / 1000 for t in line.split(', ')[1::2]]
+                    elif ind > 1:
+                        line_data = line.split(', ')
+                        time = float(line_data[0])
+                        times.append(time)
+                        ne_data[time] = [float(ne) if ne != "--" else 0 for ne in line_data[1::2]]
+                        ne_err_data[time] = [float(ne_err) if ne_err != "--" else 0 for ne_err in line_data[2::2]]
+
+            elif file == f'{shot_number}_T(t).csv':
+                with open(os.path.join(full_path, file)) as te_file:
+                    te_file_data = te_file.readlines()
+
+                for ind, line in enumerate(te_file_data):
+                    if ind > 1:
+                        line_data = line.split(', ')
+                        time = float(line_data[0])
+                        te_data[time] = [float(te) if te != "--" else 0 for te in line_data[1::2]]
+                        te_err_data[time] = [float(te_err) if te_err != "--" else 0 for te_err in line_data[2::2]]
+
+        return {
+            'R_m': coordinates,
+            'Z': 0,
+            'times': times,
+            'ne': ne_data,
+            'ne_err': ne_err_data,
+            'Te': te_data,
+            'Te_err': te_err_data
+        }
+
+    except Exception as e:
+        print(f'Error in getting equator data: {e}')
         return None
 
 
