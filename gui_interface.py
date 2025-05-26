@@ -14,11 +14,13 @@ from gui.plots import (draw_distance_from_separatrix, draw_expected,
                        draw_separatrix)
 from gui.utils_gui import (download_poly_data, get_divertor_data,
                            get_equator_data, get_ir_data, get_Xpoint)
+from utils.write_files import write_separatrix
 
 initial_path_to_mcc = r"C:\TS_data\experimental_data\mcc_data"
 initial_path_to_DTR_data = r"C:\TS_data\processed_shots"
 initial_path_to_EQUATORTS_data = r"C:\TS_data\equator_TS_data"
 initial_path_ir_camera = r"C:\TS_data\IR_data\Result_Temperature"
+initial_path_to_write_separatrix = r"C:\TS_data\separatrix_from_mcc"
 
 
 class App(tk.Tk):
@@ -379,18 +381,12 @@ class DTSPlotsTab(ttk.Frame):
                 ax=self.axs[0][3],
             )
 
-            # print('R_body, Z_body, R_leg1, Z_leg1, R_leg2 Z_leg2')
-            # for i in range(len(sep_data['body']['R'])):
-            #     print(sep_data['body']['R'][i], sep_data['body']['Z'][i], end=' ')
-            #     if i < len(sep_data['leg_1']['R']):
-            #         print(sep_data['leg_1']['R'][i], sep_data['leg_1']['Z'][i], end=' ')
-            #     else:
-            #         print('- -', end=' ')
-            #     if i < len(sep_data['leg_2']['R']):
-            #         print(sep_data['leg_2']['R'][i], sep_data['leg_2']['Z'][i], end=' ')
-            #     else:
-            #         print('- -', end=' ')
-            #     print()
+            write_separatrix(
+                filepath=initial_path_to_write_separatrix,
+                sht_num=shot_num,
+                timestep=time,
+                sep_data=sep_data,
+            )
 
             self.axs[0][3].figure.canvas.draw()
 
