@@ -4,6 +4,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from shapely.geometry import Point, Polygon
+from typing import Dict
 
 initial_path_to_mcc = r'C:\TS_data\experimental_data\mcc_data'
 initial_path_to_DTR_data = r'C:\TS_data\processed_shots'
@@ -241,43 +242,101 @@ def draw_distance_from_separatrix(dts_data: dict, equator_data: dict, mcc_data: 
     plt.show()
 
 
-def data_on_separatrix(dts_data: dict, equator_data: dict, mcc_data: dict, timestamp: float):
-    index_equator_time = find_nearest(timestamp, equator_data['times_ms'])
-    nearest_equator_time = equator_data['times_ms'][index_equator_time]
-    ne_equator = equator_data['ne'][nearest_equator_time]
-    te_equator = equator_data['Te'][nearest_equator_time]
+def data_on_separatrix(dts_data: Dict, equator_data: Dict, mcc_data: Dict, timestamp: float) -> Dict:
+    """
+    Calculate and print plasma parameters at different locations (separatrix, DTS, equator).
 
-    ne_equator_err = equator_data['ne_err'][nearest_equator_time]
-    te_equator_err = equator_data['Te_err'][nearest_equator_time]
+    Args:
+        dts_data: Dictionary with DTS diagnostic data
+        equator_data: Dictionary with equatorial plane data
+        mcc_data: Dictionary with MCC (magnetic configuration) data
+        timestamp: Time point for analysis (in ms)
+    """
+    # Process equator data
+    eq_time_idx = find_nearest(timestamp, equator_data['times_ms'])
+    eq_time = equator_data['times_ms'][eq_time_idx]
 
-    equator_points = [(R, 0) for R in equator_data['R_m']]
-    equator_distances = find_minimal_distance_to_separatrix(equator_points, mcc_data)
+    ne_eq = equator_data['ne'][eq_time]
+    te_eq = equator_data['Te'][eq_time]
+    ne_eq_err = equator_data['ne_err'][eq_time]
+    te_eq_err = equator_data['Te_err'][eq_time]
 
-    index_dts_time = find_nearest(timestamp, dts_data['t'])
+    # Calculate distances to separatrix for equator points
+    eq_points = [(R, 0) for R in equator_data['R_m']]
+    eq_distances = find_minimal_distance_to_separatrix(eq_points, mcc_data)
 
-    ne_dts = []
-    ne_dts_err = []
-    for point in dts_data['ne(t)']:
-        ne_dts.append(point[index_dts_time])
-    for point in dts_data['ne_err(t)']:
-        ne_dts_err.append(point[index_dts_time])
+    #  Process DTS data
+    dts_time_idx = find_nearest(timestamp, dts_data['t'])
 
-    te_dts = []
-    te_dts_err = []
-    for point in dts_data['Te(t)']:
-        te_dts.append(point[index_dts_time])
-    for point in dts_data['Te_err(t)']:
-        te_dts_err.append(point[index_dts_time])
+    # Extract ne and Te at given time from DTS
+    ne_dts = [point[dts_time_idx] for point in dts_data['ne(t)']]
+    ne_dts_err = [point[dts_time_idx] for point in dts_data['ne_err(t)']]
+    te_dts = [point[dts_time_idx] for point in dts_data['Te(t)']]
+    te_dts_err = [point[dts_time_idx] for point in dts_data['Te_err(t)']]
 
-    dts_points = [(0.24, float(Z) / 100) for Z in dts_data['Z']]  # 0.24 R=24 cm diagnostic DTS laser path
+    # Calculate distances to separatrix for DTS points
+    dts_points = [(0.24, float(Z) / 100) for Z in dts_data['Z']]  # R=24 cm (DTS laser path)
     dts_distances = find_minimal_distance_to_separatrix(dts_points, mcc_data)
 
+    # Calculate parameters at separatrix (distance=0)
+    te_sep = piecewise_linear_interpolate(eq_distances, te_eq, 0)
+    te_sep_err = te_eq_err[find_nearest(te_eq, te_sep)]
 
-    te_on_sep = piecewise_linear_interpolate(equator_distances, te_equator, 0)
+    ne_sep = piecewise_linear_interpolate(eq_distances, ne_eq, 0)
+    ne_sep_err = ne_eq_err[find_nearest(ne_eq, ne_sep)]
 
-    print(f"{timestamp} {te_dts[ne_dts.index(max(ne_dts))]} {te_dts_err[ne_dts.index(max(ne_dts))]} "
-          f"{te_on_sep} {te_equator_err[find_nearest(te_equator, te_on_sep)]} "
-          f"{max(te_equator)} {te_equator_err[te_equator.index(max(te_equator))]}")
+    # Find peak values at equator
+    ne_eq_peak = max(ne_eq)
+    ne_eq_peak_err = ne_eq_err[ne_eq.index(ne_eq_peak)]
+    te_eq_peak = te_eq[ne_eq.index(ne_eq_peak)]
+    te_eq_peak_err = te_eq_err[te_eq.index(te_eq_peak)]
+
+
+    #Find peak values at DTS (using max ne point)
+    max_ne_dts_idx = ne_dts.index(max(ne_dts))
+    te_dts_peak = te_dts[max_ne_dts_idx]
+    te_dts_peak_err = te_dts_err[max_ne_dts_idx]
+    ne_dts_peak = ne_dts[max_ne_dts_idx]
+    ne_dts_peak_err = ne_dts_err[max_ne_dts_idx]
+
+    #  Calculate pressure values (pe = ne * Te)
+    pe_sep = te_sep * ne_sep
+    pe_sep_err = pe_sep * (te_sep_err / te_sep + ne_sep_err / ne_sep)
+
+    pe_dts = te_dts_peak * ne_dts_peak
+    pe_dts_err = pe_dts * (te_dts_peak_err / te_dts_peak + ne_dts_peak_err / ne_dts_peak)
+
+    pe_max = te_eq_peak * ne_eq_peak
+    pe_max_err = pe_max * (te_eq_peak_err / te_eq_peak + ne_eq_peak_err / ne_eq_peak)
+
+    return {
+        # Основные параметры
+        'timestamp': timestamp,
+
+        # Параметры на сепаратрисе
+        'ne_sep': ne_sep,
+        'ne_sep_err': ne_sep_err,
+        'te_sep': te_sep,
+        'te_sep_err': te_sep_err,
+        'pe_sep': pe_sep,
+        'pe_sep_err': pe_sep_err,
+
+        # Параметры DTS (в точке max ne)
+        'ne_dts': max(ne_dts),
+        'ne_dts_err': ne_dts_err[ne_dts.index(max(ne_dts))],
+        'te_dts': te_dts[ne_dts.index(max(ne_dts))],
+        'te_dts_err': te_dts_err[ne_dts.index(max(ne_dts))],
+        'pe_dts': pe_dts,
+        'pe_dts_err': pe_dts_err,
+
+        # Параметры на экваторе (максимальные)
+        'ne_eq_max': ne_eq_peak,
+        'ne_eq_max_err': ne_eq_peak_err,
+        'te_eq_max': te_eq_peak,
+        'te_eq_max_err': te_eq_peak_err,
+        'pe_max': pe_max,
+        'pe_max_err': pe_max_err,
+    }
 
 
 def find_minimal_distance_to_separatrix(points: list[set], mcc_data: dict):
@@ -310,18 +369,39 @@ if __name__ == '__main__':
                 44631, 44632, 44633, 44634]
     timestamps = [170.6, 180.6, 190.6, 200.6, 210.6]
 
-    for sht_num in sht_nums:
-        print('\n', f"{sht_num}, Te_dts, Te_dts_err, Te_sep, Te_err_sep, Te_max, Te_err_max", '\n')
+    with open('plasma_parameters_full.csv', 'w') as f:
+        header = [
+            'shot', 'timestamp',
+            'ne_dts', 'ne_dts_err', 'te_dts', 'te_dts_err', 'pe_dts', 'pe_dts_err',
+            'ne_sep', 'ne_sep_err', 'te_sep', 'te_sep_err', 'pe_sep', 'pe_sep_err',
+            'ne_eq_max', 'ne_eq_max_err', 'te_eq_max', 'te_eq_max_err', 'pe_max', 'pe_max_err'
+        ]
+        f.write(','.join(header) + '\n')
 
-        path_to_mcc = f'{initial_path_to_mcc}/mcc_{sht_num}.json'
-        dts_data = get_divertor_data(shot_number=sht_num)
-        equator_data = get_equator_data(shot_number=sht_num)
+        for sht_num in sht_nums:
+            path_to_mcc = f'{initial_path_to_mcc}/mcc_{sht_num}.json'
+            dts_data = get_divertor_data(shot_number=sht_num)
+            equator_data = get_equator_data(shot_number=sht_num)
 
-        try:
             for timestamp in timestamps:
-                sep_data = get_separatrix_data(path=path_to_mcc, timestamp_base=timestamp)
+                try:
+                    sep_data = get_separatrix_data(path=path_to_mcc, timestamp_base=timestamp)
+                    results = data_on_separatrix(dts_data, equator_data, sep_data, timestamp)
 
-                data_on_separatrix(dts_data, equator_data, sep_data, timestamp)
-                # draw_distance_from_separatrix(dts_data, equator_data, sep_data, timestamp)
-        except Exception:
-            continue
+                    row = [
+                        sht_num, timestamp,
+                        results['ne_dts'], results['ne_dts_err'],
+                        results['te_dts'], results['te_dts_err'],
+                        results['pe_dts'], results['pe_dts_err'],
+                        results['ne_sep'], results['ne_sep_err'],
+                        results['te_sep'], results['te_sep_err'],
+                        results['pe_sep'], results['pe_sep_err'],
+                        results['ne_eq_max'], results['ne_eq_max_err'],
+                        results['te_eq_max'], results['te_eq_max_err'],
+                        results['pe_max'], results['pe_max_err'],
+                    ]
+
+                    f.write(','.join(map(str, row)) + '\n')
+
+                except Exception:
+                    continue

@@ -3,12 +3,11 @@ import json
 import os
 from pathlib import Path
 import numpy as np
-from shapely.geometry import Point,Polygon
+from shapely.geometry import Point, Polygon
 
 from utils.path_parser import read_config
 from utils.POLY_v2 import built_fibers, calculate_Te_ne
 from utils.diagnostic_utils import LaserNdYag
-
 
 initial_path_to_mcc = r'C:\TS_data\experimental_data\mcc_data'
 initial_path_to_DTR_data = r'C:\TS_data\processed_shots'
@@ -153,7 +152,7 @@ def get_equator_data_origin(sht_num):
 
                 for ind, line in enumerate(ne_file_data):
                     if ind == 0:
-                        coordinates = [float(t)/1000 for t in line.split(', ')[1::2]]
+                        coordinates = [float(t) / 1000 for t in line.split(', ')[1::2]]
                     if ind > 1:
                         line_data_list = line.split(', ')
                         time = float(line_data_list[0])
@@ -282,7 +281,7 @@ def find_minimal_distance_to_separatrix(points: list[set], mcc_data: dict):
         R_sep.append(R_sep[0])
         Z_sep.append(Z_sep[0])
 
-    polygon_coords = list(zip(R_sep,Z_sep))
+    polygon_coords = list(zip(R_sep, Z_sep))
     polygon = Polygon(polygon_coords)
 
     all_distances = []
@@ -294,6 +293,6 @@ def find_minimal_distance_to_separatrix(points: list[set], mcc_data: dict):
         else:
             min_distance = point_object.distance(polygon)
 
-        all_distances.append(min_distance * 100)    # meters to cm
+        all_distances.append(min_distance * 100)  # meters to cm
 
     return all_distances

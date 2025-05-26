@@ -207,23 +207,25 @@ def draw_distance_from_separatrix(dts_data: dict, equator_data: dict, mcc_data: 
     axs[0].errorbar(equator_distances, ne_equator, yerr=ne_equator_err, fmt='o-', label=f'eqTS, {nearest_equator_time}')
     axs[0].errorbar(dts_distances, ne_dts, yerr=ne_dts_err, fmt='o-', label=f'DTS, {dts_data['t'][index_dts_time]}')
 
-    axs[0].set_ylabel('ne')
-    axs[0].set_xlabel('Distance to sep, cm')
+    axs[0].set_ylabel('$n_e, m^{-3}$', fontsize=16)
+    axs[0].set_xlabel('Distance to separatrix, cm', fontsize=16)
     axs[0].legend()
     axs[0].grid()
 
     axs[1].errorbar(equator_distances, te_equator, yerr=Te_equator_err, fmt='o-', label=f'eqTS, {nearest_equator_time}')
     axs[1].errorbar(dts_distances, te_dts, yerr=te_dts_err, fmt='o-', label=f'DTS, {dts_data['t'][index_dts_time]}')
 
-    axs[1].set_ylabel('Te')
-    axs[1].set_xlabel('Distance to separatrix, cm')
+    axs[1].set_ylabel('$T_e, eV$', fontsize=16)
+    axs[1].set_xlabel('Distance to separatrix, cm', fontsize=16)
     axs[1].legend()
     axs[1].grid()
 
     axs[2].plot(equator_distances, [te * ne for te, ne in zip(te_equator, ne_equator)], 'o-')
     axs[2].plot(dts_distances, [te * ne for te, ne in zip(te_dts, ne_dts)], 'o-')
-    axs[2].set_ylabel('ne * Te')
-    axs[2].set_xlabel('Distance to separatrix, cm')
+    axs[2].set_ylabel('$n_e * T_e$', fontsize=16)
+    axs[2].set_xlabel('Distance to separatrix, cm', fontsize=16)
     axs[2].grid()
+    for ax in axs:
+        ax.tick_params(axis='both', which='major', labelsize=14)
 
     fig.show()

@@ -255,11 +255,13 @@ def plot_data_from_psi(ets_data: List[Dict], dts_data: List[Dict], equilibrium_d
 
     axs[0].errorbar(psi_ets, ets_ne, yerr=ets_ne_err, fmt='o-', markersize=3, label=f'ne, ETS {time}')
     axs[0].errorbar(psi_dts_sorted, dts_ne, yerr=dts_ne_err, fmt='o', markersize=3, label=f'ne, DTS {time}')
-    axs[0].set_ylabel('ne')
+    axs[0].set_ylabel('$n_e, m^{-3}$', fontsize=16)
+    axs[0].set_xlabel('$\psi$', fontsize=16)
 
     axs[1].errorbar(psi_ets, ets_te, yerr=ets_te_err, fmt='o-', markersize=3, label=f'Te, ETS {time}')
     axs[1].errorbar(psi_dts_sorted, dts_te, yerr=dts_te_err, fmt='o', markersize=3, label=f'Te, DTS {time}')
     axs[1].set_ylabel('Te')
+    axs[1].set_xlabel('$\psi$', fontsize=16)
 
     axs[2].errorbar(psi_ets, ets_nt, yerr=ets_nt_err, fmt='o-', markersize=3, label=f'ne*Te, ETS {time}')
     axs[2].errorbar(psi_dts_sorted, dts_nt, yerr=dts_nt_err, fmt='o', markersize=3, label=f'ne*Te, DTS {time}')
@@ -273,12 +275,12 @@ def plot_data_from_psi(ets_data: List[Dict], dts_data: List[Dict], equilibrium_d
 
 
 if __name__ == '__main__':
-    shot_num = 44613
+    shot_num = 44644
     dts_data = get_divertor_data(shot_num)
     equator_data = get_equator_data(shot_num)
 
     if dts_data and equator_data:
-        for time in [170.6]:
+        for time in [160.6]:
             equilibrium_data = get_magnetic_equilibrium_data(shot_num, time)
             if equilibrium_data:
                 dts_time_idx, nearest_dts_shot = find_nearest(np.array(dts_data['times_ms']), time, out_value=True,
