@@ -6,7 +6,7 @@ from utils.POLY_v2 import Polychromator
 
 
 def write_results(
-    discharge_num: str, path, laser_shots_times: list, fibers: list[Polychromator]
+        discharge_num: str, path, laser_shots_times: list, fibers: list[Polychromator]
 ):
     try:
         path_to_write = os.path.join(path, discharge_num)
@@ -59,9 +59,9 @@ def write_results(
 
 
 def write_separatrix(
-    filepath: Path, sht_num: int, timestep: float, sep_data: dict
+        filepath: Path, sht_num: int, timestamp: float, sep_data: dict
 ) -> None:
-    filename = Path(f"{filepath}/mcc_{sht_num}_{timestep}.csv")
+    filename = Path(f"{filepath}/mcc_{sht_num}_{timestamp}.csv")
 
     if filename.is_file():
         print("File already exist!")
@@ -70,12 +70,12 @@ def write_separatrix(
     with open(filename, "w") as file:
         file.write("body_R, body_Z, leg_1_R, leg_1_Z, leg_2_R, leg_2_Z\n")
         for body_R, body_Z, leg_1_R, leg_1_Z, leg_2_R, leg_2_Z in zip_longest(
-            sep_data["body"]["R"],
-            sep_data["body"]["Z"],
-            sep_data["leg_1"]["R"],
-            sep_data["leg_1"]["Z"],
-            sep_data["leg_2"]["R"],
-            sep_data["leg_2"]["Z"],
+                sep_data["body"]["R"],
+                sep_data["body"]["Z"],
+                sep_data["leg_1"]["R"],
+                sep_data["leg_1"]["Z"],
+                sep_data["leg_2"]["R"],
+                sep_data["leg_2"]["Z"],
         ):
             formatted_row = (
                 f"{body_R}, {body_Z}, {leg_1_R}, {leg_1_Z}, {leg_2_R}, {leg_2_Z},"
@@ -83,3 +83,25 @@ def write_separatrix(
             file.write(formatted_row + "\n")
 
     return
+
+
+def write_distance(filepath: Path, timestamp: float,
+                   equator_distances, ne_equator, ne_equator_err, te_equator, te_equator_err,
+                   dts_distances, ne_dts, ne_dts_err, te_dts, te_dts_err) -> None:
+    filename = Path(f"mcc_{timestamp}.csv")
+
+    if filename.is_file():
+        print("File already exist!")
+        pass
+
+    with open(filename, "w") as file:
+        file.write(
+            'eq_dist, ne_eq, ne_err, te_eq, te_err, dts_dist, ne_dts, ne_err, te_dts, te_err' + '\n')
+        for eq_dist, ne_eq, ne_eq_err, te_eq, te_eq_err, d_dist, ne_d, ne_d_err, te_d, te_d_err in zip_longest(
+                equator_distances, ne_equator, ne_equator_err, te_equator, te_equator_err,
+                dts_distances, ne_dts, ne_dts_err, te_dts, te_dts_err):
+            formatted_row = (
+                f"{eq_dist}, {ne_eq}, {ne_eq_err}, {te_eq}, {te_eq_err},"
+                f" {d_dist}, {ne_d}, {ne_d_err}, {te_d}, {te_d_err}"
+            )
+            file.write(formatted_row + "\n")

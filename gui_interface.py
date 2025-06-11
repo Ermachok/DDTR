@@ -384,7 +384,7 @@ class DTSPlotsTab(ttk.Frame):
             write_separatrix(
                 filepath=initial_path_to_write_separatrix,
                 sht_num=shot_num,
-                timestep=time,
+                timestamp=time,
                 sep_data=sep_data,
             )
 

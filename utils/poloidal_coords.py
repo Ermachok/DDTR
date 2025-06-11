@@ -1,6 +1,6 @@
 import os
 from typing import Dict, List, Optional, Tuple, Union
-
+from itertools import zip_longest
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -13,7 +13,7 @@ INITIAL_PATH_EQUILIBRIUM_DATA = r"C:\TS_data\Kiselev_magnetic_equilibrium"
 
 
 def find_nearest(
-    array: np.ndarray, value: float, out_value: bool = False, out_index: bool = False
+        array: np.ndarray, value: float, out_value: bool = False, out_index: bool = False
 ) -> Union[int, float, Tuple[int, float]]:
     """
     Find the index and/or value in `array` that is closest to `value`.
@@ -169,7 +169,7 @@ def get_equator_data(shot_num: Union[int, str]) -> Optional[Dict]:
 
 
 def get_magnetic_equilibrium_data(
-    shot_num: Union[int, str], time: float
+        shot_num: Union[int, str], time: float
 ) -> Optional[Dict]:
     """
     Retrieve magnetic equilibrium data for a given shot number and time.
@@ -243,7 +243,7 @@ def prepare_data_for_poloidal_plot(ts_data: List[Dict], equilibrium: Dict) -> Tu
 
 
 def plot_data_from_psi(
-    ets_data: List[Dict], dts_data: List[Dict], equilibrium_data: Dict
+        ets_data: List[Dict], dts_data: List[Dict], equilibrium_data: Dict
 ):
     """
     Plot data as a function of psi.
@@ -253,12 +253,26 @@ def plot_data_from_psi(
         dts_data (List[Dict]): The DTS data.
         equilibrium_data (Dict): The magnetic equilibrium data.
     """
+
     psi_ets, ets_ne, ets_te, ets_nt, ets_ne_err, ets_te_err, ets_nt_err = (
         prepare_data_for_poloidal_plot(ets_data, equilibrium_data)
     )
     psi_dts, dts_ne, dts_te, dts_nt, dts_ne_err, dts_te_err, dts_nt_err = (
         prepare_data_for_poloidal_plot(dts_data, equilibrium_data)
     )
+
+    with open(f'poloidal_{time}.csv', 'w') as file:
+        file.write(f'PSI_DTS_{time}, DTS_ne_{time}, DTS_ne_err, DTS_te, DTS_te_err, DTS_nt, DTS_nt_err,'
+                   f'PSI_ETS_{time}, ETS_ne_{time}, ETS_ne_err, ETS_te, ETS_te_err, ETS_nt, ETS_nt_err' + '\n')
+
+        for PSI_DTS, DTS_ne, DTS_ne_err, DTS_te, DTS_te_err, DTS_nt, DTS_nt_err, PSI_ETS, ETS_ne, ETS_ne_err, ETS_te, ETS_te_err, ETS_nt, ETS_nt_err in zip_longest(
+                psi_dts, dts_ne, dts_ne_err, dts_te, dts_te_err, dts_nt, dts_nt_err,
+                psi_ets, ets_ne, ets_ne_err, ets_te, ets_te_err, ets_nt, ets_nt_err):
+            formatted_row = (
+                f"{PSI_DTS}, {DTS_ne}, {DTS_ne_err}, {DTS_te}, {DTS_te_err}, {DTS_nt}, {DTS_nt_err},"
+                f"{PSI_ETS}, {ETS_ne}, {ETS_ne_err}, {ETS_te}, {ETS_te_err}, {ETS_nt}, {ETS_nt_err},"
+            )
+            file.write(formatted_row + "\n")
 
     psi_dts_sorted = sorted(psi_dts)
     dts_ne = [dts_ne[psi_dts.index(value)] for value in psi_dts_sorted]
@@ -333,12 +347,12 @@ def plot_data_from_psi(
 
 
 if __name__ == "__main__":
-    shot_num = 44644
+    shot_num = 44613
     dts_data = get_divertor_data(shot_num)
     equator_data = get_equator_data(shot_num)
 
     if dts_data and equator_data:
-        for time in [160.6]:
+        for time in [150]:
             equilibrium_data = get_magnetic_equilibrium_data(shot_num, time)
             if equilibrium_data:
                 dts_time_idx, nearest_dts_shot = find_nearest(
