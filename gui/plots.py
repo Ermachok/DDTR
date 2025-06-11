@@ -4,16 +4,17 @@ import random
 import matplotlib.pyplot as plt
 
 from gui.utils_gui import find_minimal_distance_to_separatrix, find_nearest
+from utils.write_files import write_distance
 
 
 def draw_separatrix(
-    separatrix_data: dict,
-    time: float,
-    shot_num: int,
-    divertor_coords: list = None,
-    equator_radia: list = None,
-    ax=None,
-    add_flag=False,
+        separatrix_data: dict,
+        time: float,
+        shot_num: int,
+        divertor_coords: list = None,
+        equator_radia: list = None,
+        ax=None,
+        add_flag=False,
 ):
     if ax is None:
         fig, ax = plt.subplots()
@@ -144,7 +145,7 @@ def draw_expected(fe_data: dict, ax, phe_data: list, timestamp, add_flag: bool =
 
 
 def draw_distance_from_separatrix_originVersion(
-    dts_data: dict, equator_data: dict, mcc_data: dict, timestamp: float
+        dts_data: dict, equator_data: dict, mcc_data: dict, timestamp: float
 ):
     index_equator_time = find_nearest(timestamp, equator_data["times"])
     nearest_equator_time = equator_data["times"][index_equator_time]
@@ -213,7 +214,7 @@ def draw_distance_from_separatrix_originVersion(
 
 
 def draw_distance_from_separatrix(
-    dts_data: dict, equator_data: dict, mcc_data: dict, timestamp: float
+        dts_data: dict, equator_data: dict, mcc_data: dict, timestamp: float
 ):
     index_equator_time = find_nearest(timestamp, equator_data["times"])
     nearest_equator_time = equator_data["times"][index_equator_time]
@@ -299,4 +300,6 @@ def draw_distance_from_separatrix(
     for ax in axs:
         ax.tick_params(axis="both", which="major", labelsize=14)
 
+    write_distance('', timestamp, equator_distances, ne_equator, ne_equator_err, te_equator, Te_equator_err,
+                   dts_distances, ne_dts, ne_dts_err, te_dts, te_dts_err)
     fig.show()
